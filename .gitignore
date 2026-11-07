@@ -1,0 +1,11 @@
+**/.dart_tool/
+**/build/
+**/.idea/
+**/*.iml
+**/.flutter-plugins-dependencies
+**/local.properties
+**/.gradle/
+**/*.jks
+**/*.keystore
+**/key.properties
+**/coverage/
