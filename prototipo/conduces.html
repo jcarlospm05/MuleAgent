@@ -1,0 +1,431 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Conduces de mulas · Prototipo aprobado</title>
+  <style>
+    body {margin:0;background:#f1f3f8}
+    #conduces-recorrido .cc-photo i[data-lucide="camera"]::before {content:"📷";font:32px system-ui}
+  </style>
+</head>
+<body>
+<div id="conduces-recorrido" class="viz-dotted-background">
+  <div class="cc-demo-bar" aria-label="Recorridos del prototipo">
+    <button type="button" data-role="operator" aria-pressed="true">Operador</button>
+    <button type="button" data-role="admin" aria-pressed="false">Administrador</button>
+  </div>
+  <div class="cc-phone">
+    <main class="cc-stage" aria-label="Captura de conduces">
+      <button type="button" class="cc-primary" data-action="start">Iniciar día <span aria-hidden="true">→</span></button>
+    </main>
+  </div>
+</div>
+<style>
+@property --cc-orbit {
+  syntax: "<angle>";
+  inherits: false;
+  initial-value: 30deg;
+}
+#conduces-recorrido{padding:16px 5px;font:17px/1.45 system-ui,sans-serif;color:#182237}
+#conduces-recorrido *{box-sizing:border-box}
+#conduces-recorrido .cc-phone{width:min(100%,390px);margin:auto;border-radius:30px;border:1px solid #DFE3ED;background:#fffdf8;box-shadow:0 15px 45px #182B5026;overflow:hidden}
+#conduces-recorrido .cc-stage{min-height:498px;display:grid;padding:24px;align-content:center;position:relative;background:#fffdf8;transition:background-color .33s ease}
+#conduces-recorrido .cc-stage[data-tone="good"]{background:#ebf8f0}
+#conduces-recorrido .cc-stage[data-tone="bad"]{background:#fff1f3}
+#conduces-recorrido .cc-screen{display:grid;gap:19px;min-width:0;animation:cc-enter .43s cubic-bezier(.17,.82,.27,1) both}
+#conduces-recorrido .cc-screen.cc-backward{animation-name:cc-return}
+#conduces-recorrido .cc-nav{display:flex;align-items:center;justify-content:space-between;gap:8px}
+#conduces-recorrido .cc-meta{font-size:13px;font-weight:700;color:#4E5B73}
+#conduces-recorrido .cc-line{width:100%;height:5px;border:0;border-radius:20px;background:#E9EDF6;accent-color:#21355E;appearance:none}
+#conduces-recorrido .cc-line::-webkit-progress-bar{background:#E9EDF6;border-radius:20px}
+#conduces-recorrido .cc-line::-webkit-progress-value{background:#BD6D10;border-radius:20px}
+#conduces-recorrido .cc-line::-moz-progress-bar{background:#BD6D10;border-radius:20px}
+#conduces-recorrido h2,#conduces-recorrido p{margin:0}
+#conduces-recorrido h2{font-size:clamp(29px,8vw,41px);line-height:1.02;letter-spacing:-.055em;font-weight:800}
+#conduces-recorrido .cc-hint{font-size:15px;color:#4E5B73;margin-top:8px}
+#conduces-recorrido button{font:inherit;min-height:46px;border:0;background:transparent;color:#21355E;border-radius:14px;font-weight:750}
+#conduces-recorrido .cc-primary{min-height:61px;background:#21355E;color:#fff;width:100%;padding:12px 15px;font-size:19px;box-shadow:0 4px 0 #132240;transition:transform .15s ease,box-shadow .15s ease}
+#conduces-recorrido .cc-primary span{margin-left:6px}
+#conduces-recorrido .cc-primary:active{transform:translateY(3px);box-shadow:0 1px 0 #132240}
+#conduces-recorrido .cc-quiet{padding:5px 4px;text-align:center}
+#conduces-recorrido .cc-field{position:relative;isolation:isolate;padding:2px;border-radius:19px;background:#AFBAD2}
+#conduces-recorrido .cc-field:focus-within{background:#8B591B}
+#conduces-recorrido .cc-field.cc-led::before{content:"";position:absolute;inset:-1px;border-radius:20px;background:conic-gradient(from var(--cc-orbit),#AFBAD2 0deg,#AFBAD2 277deg,#E59A32 318deg,#FFC45B 343deg,#A95207 355deg,#AFBAD2 360deg);box-shadow:0 0 10px #F8AA406B;z-index:-1;animation:cc-light 1.65s cubic-bezier(.35,.12,.42,1) both;pointer-events:none}
+#conduces-recorrido .cc-field.cc-led:focus-within::before{box-shadow:0 0 16px #F8AA409A}
+#conduces-recorrido .cc-field input{display:block;width:100%;min-width:0;min-height:66px;border:0;border-radius:17px;background:#fff;color:#182237;padding:12px 14px;font:700 24px/1.2 system-ui,sans-serif}
+#conduces-recorrido .cc-field input::placeholder{color:#4E5B73;opacity:1}
+#conduces-recorrido .cc-field.cc-led input{font-size:clamp(25px,8vw,36px);letter-spacing:-.035em;font-variant-numeric:tabular-nums}
+#conduces-recorrido .cc-field.cc-invalid{background:#a62746}
+#conduces-recorrido .cc-field.cc-invalid::before{animation:none;background:#ad2f4d;box-shadow:0 0 0 4px #f8bdcb}
+#conduces-recorrido .cc-alert{font-size:15px;font-weight:700;color:#9d1d3c}
+#conduces-recorrido .cc-photo{width:min(100%,232px);aspect-ratio:1;margin:auto;border:2px solid #BCC7DD;border-radius:24px;display:grid;place-items:center;background:#FFF5E4;color:#21355E}
+#conduces-recorrido .cc-photo i,#conduces-recorrido .cc-photo svg{width:45px;height:45px}
+#conduces-recorrido .cc-photo.cc-viewfinder{background:#172339;color:#fff;border-color:#F6AE43;animation:cc-open .5s cubic-bezier(.21,.81,.25,1.09) both}
+#conduces-recorrido .cc-gauge{width:81%;aspect-ratio:1;border:8px solid #657593;box-shadow:inset 0 0 0 2px #8794AF;border-radius:50%;display:grid;align-content:center;justify-items:center;gap:6px;background:#10192C}
+#conduces-recorrido .cc-gauge strong{font:700 clamp(15px,5vw,23px)/1 monospace;background:#FFF0CF;color:#182237;padding:8px 9px;border-radius:5px}
+#conduces-recorrido .cc-gauge small{font-size:12px}
+#conduces-recorrido .cc-confirm{display:grid;place-items:center;width:68px;height:68px;border-radius:50%;color:#166443;background:#d8f2e3;font-size:36px;font-weight:800;animation:cc-pop .47s cubic-bezier(.2,.7,.2,1.2) both}
+#conduces-recorrido .cc-item{padding:12px 0;border-bottom:1px solid #DFE3ED;overflow-wrap:anywhere}
+#conduces-recorrido .cc-item b,#conduces-recorrido .cc-item small{display:block}
+#conduces-recorrido .cc-item small{color:#4E5B73}
+@keyframes cc-light{from{--cc-orbit:30deg}to{--cc-orbit:390deg}}
+@keyframes cc-enter{from{opacity:0;transform:translateX(44px) scale(.97)}65%{opacity:1}to{opacity:1;transform:translateX(0) scale(1)}}
+@keyframes cc-return{from{opacity:0;transform:translateX(-39px) scale(.97)}65%{opacity:1}to{opacity:1;transform:translateX(0) scale(1)}}
+@keyframes cc-open{from{transform:scale(.66,.28);border-radius:70px;opacity:.54}to{transform:scale(1);border-radius:24px;opacity:1}}
+@keyframes cc-pop{from{transform:scale(.64);opacity:.5}65%{transform:scale(1.14);opacity:1}to{transform:scale(1);opacity:1}}
+#conduces-recorrido .cc-stage{overflow:hidden}
+#conduces-recorrido .cc-exiting{position:absolute;inset:0;display:grid;align-content:center;padding:inherit;pointer-events:none}
+#conduces-recorrido .cc-exiting .cc-screen{animation:none}
+#conduces-recorrido .cc-screen > .cc-primary{animation:cc-rise .36s .06s cubic-bezier(.21,.73,.27,1) both}
+#conduces-recorrido .cc-exiting .cc-primary{animation:none}
+#conduces-recorrido .cc-confirm{position:relative}
+#conduces-recorrido .cc-confirm::after{content:"";position:absolute;inset:-3px;border:2px solid #33946B;border-radius:50%;animation:cc-ring .64s ease-out both}
+@keyframes cc-rise{from{opacity:.2;translate:0 10px}to{opacity:1;translate:0 0}}
+@keyframes cc-ring{from{opacity:.65;transform:scale(.9)}to{opacity:0;transform:scale(1.42)}}
+
+#conduces-recorrido .cc-demo-bar{display:flex;justify-content:center;gap:5px;margin:0 auto 12px;width:min(100%,440px);flex-wrap:wrap}
+#conduces-recorrido .cc-demo-bar button{border:1px solid #d4dcea;background:#fffdf8;padding:0 14px;font-size:14px}
+#conduces-recorrido .cc-demo-bar button[aria-pressed=true]{color:#fff;background:#21355e;border-color:#21355e}
+#conduces-recorrido .cc-phone{width:min(100%,440px)}
+#conduces-recorrido .cc-kicker{font-size:12px;font-weight:800;letter-spacing:.10em;text-transform:uppercase;color:#81511a}
+#conduces-recorrido .cc-actions,#conduces-recorrido .cc-list{display:grid;gap:8px;min-width:0}
+#conduces-recorrido .cc-actions button{width:100%}
+#conduces-recorrido .cc-outline{background:#fff;border:1px solid #cad4e8;padding:8px 12px}
+#conduces-recorrido .cc-outline[aria-pressed=true]{background:#fff0cf;border-color:#8b591b}
+#conduces-recorrido .cc-stage button:disabled{opacity:.52}
+#conduces-recorrido .cc-file{border:1px solid #d8dfed;border-radius:13px;padding:11px 13px;background:#fff;overflow-wrap:anywhere}
+#conduces-recorrido .cc-file b,#conduces-recorrido .cc-file small{display:block}
+#conduces-recorrido .cc-file small{color:#4e5b73}
+#conduces-recorrido .cc-pill{display:inline-block;font-size:12px;font-weight:750;border-radius:20px;background:#e9edf6;color:#21355e;padding:3px 8px}
+#conduces-recorrido .cc-pill[data-kind="good"]{background:#d8f2e3;color:#166443}
+#conduces-recorrido .cc-pill[data-kind="warn"]{background:#fff0cf;color:#75420b}
+#conduces-recorrido .cc-pair{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:8px;align-items:start}
+#conduces-recorrido .cc-pair > div{min-width:0}
+#conduces-recorrido .cc-pair button{width:100%;overflow-wrap:anywhere;font-size:14px}
+#conduces-recorrido .cc-subhead{font-size:15px;font-weight:800;margin:0 0 5px}
+#conduces-recorrido .cc-paper{border:1px solid #d8dfed;border-top:4px solid #21355e;padding:12px;background:#fff;border-radius:5px}
+#conduces-recorrido .cc-doc-entry{display:grid;grid-template-columns:1fr auto;gap:8px;border-bottom:1px solid #d8dfed;padding:8px 0;align-items:center;font-size:13px;overflow-wrap:anywhere}
+#conduces-recorrido .cc-thumb{display:grid;place-items:center;min-height:44px;padding:5px;border-radius:7px;background:#21355e;color:#fff5e4;font:700 11px monospace;overflow-wrap:anywhere}
+#conduces-recorrido .cc-table{width:100%;border-collapse:collapse;table-layout:fixed;background:#fff;font-size:13px}
+#conduces-recorrido .cc-table td,#conduces-recorrido .cc-table th{text-align:left;overflow-wrap:anywhere;padding:7px 4px;border-bottom:1px solid #d8dfed}
+#conduces-recorrido .cc-table th{background:#e9edf6}
+#conduces-recorrido .cc-state-message{padding:10px;border-radius:10px;background:#e9edf6;color:#21355e;font-size:14px}
+#conduces-recorrido .cc-stage[data-tone="bad"] .cc-alert{animation:cc-warning .34s ease both}
+@keyframes cc-warning{25%,75%{transform:translateX(-3px)}50%{transform:translateX(3px)}}
+@media(prefers-reduced-motion:reduce){#conduces-recorrido .cc-stage[data-tone="bad"] .cc-alert{animation:none}}
+@media(max-width:370px){#conduces-recorrido .cc-stage{padding:17px}}
+@media(prefers-reduced-motion:reduce){#conduces-recorrido .cc-stage,#conduces-recorrido .cc-screen,#conduces-recorrido .cc-primary,#conduces-recorrido .cc-field.cc-led::before,#conduces-recorrido .cc-photo.cc-viewfinder,#conduces-recorrido .cc-confirm,#conduces-recorrido .cc-confirm::after,#conduces-recorrido .cc-screen > .cc-primary{animation:none;transition:none}}
+</style>
+<script>
+(() => {
+  const root = document.getElementById('conduces-recorrido');
+  const stage = root.querySelector('.cc-stage');
+  const dayText = '7 de noviembre de 2026';
+  const dateValue = '2026-11-07';
+  const filenameDate = '7-11-26';
+  const types = {entry:'Entrada', exit:'Salida'};
+  const labels = {entry:'inicio', exit:'cierre'};
+  const source = {
+    entry: [
+      {name:'Mulero de ejemplo A',id:'DEMO362',provider:'Proveedor A',time:'07:04',meter:'111410.7',photo:'sample'},
+      {name:'Mulero de ejemplo B',id:'DEMO118',provider:'Proveedor B',time:'07:12',meter:'84225.1',photo:'sample'},
+      {name:'Mulero de ejemplo C',id:'DEMO204',provider:'Proveedor A',time:'07:25',meter:'93510.3',photo:'sample'}
+    ],
+    exit: [
+      {id:'DEMO-362',provider:'Proveedor A',time:'19:16',meter:'111421.9',photo:'omitted'},
+      {id:'DEMO118',provider:'Proveedor B',time:'19:25',meter:'84236.4',photo:'sample'},
+      {id:'DEMO 204',provider:'Proveedor A',time:'19:38',meter:'93522.2',photo:'sample'}
+    ]
+  };
+  const reports = Object.fromEntries(Object.keys(types).map(key=>[key,{rows:[],draft:null,step:0,editIndex:null,state:'new',shared:false,version:1}]));
+  const received = {entry:[],exit:[]};
+  const pairs = [];
+  const selected = {entry:null,exit:null};
+  const audit = [];
+  let role='operator', view='home', type='entry', detailIndex=0;
+  let error='', notice='', camera=false, backward=false, pdfMode='separate', page=0, excelTab='entry';
+  let importDate=dateValue, receivedDate=dateValue;
+  const esc = value => String(value??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  const icon = name=>'<i data-lucide="'+name+'" aria-hidden="true"></i>';
+  const btn = (action,text,kind='primary',attrs='')=>'<button type="button" class="cc-'+kind+'" data-action="'+action+'" '+attrs+'>'+text+'</button>';
+  const head = (title,subtitle='',kicker='')=>'<div>'+(kicker?'<p class="cc-kicker">'+kicker+'</p>':'')+'<h2>'+title+'</h2>'+(subtitle?'<p class="cc-hint">'+subtitle+'</p>':'')+'</div>';
+  const nav = (target,caption='')=>'<div class="cc-nav">'+btn('go:'+target,'← Atrás','quiet')+'<span class="cc-meta">'+caption+'</span></div>';
+  const pill = (text,kind='')=>'<span class="cc-pill" data-kind="'+kind+'">'+text+'</span>';
+  const box = content=>'<div class="cc-file">'+content+'</div>';
+  const list = content=>'<div class="cc-list">'+content+'</div>';
+  const status = ()=>notice?'<p class="cc-state-message" role="status">'+esc(notice)+'</p>':'';
+  const report = ()=>reports[type];
+  const count = n => n===1?'1 mula registrada':n+' mulas registradas';
+  const baseName = ()=>(type==='entry'?'Inicio':'Cierre')+' '+filenameDate+(report().version>1?' v'+report().version:'');
+  const photoStatus = row => row.photo==='omitted'?pill('Foto omitida','warn'):pill('Foto disponible','good');
+  const photoName = (row,key)=>esc(row.id)+' '+(role==='admin'?receivedDate.split('-').reverse().map((part,i)=>i===2?part.slice(-2):Number(part)).join('-'):filenameDate)+' '+labels[key]+'.jpg';
+  const demoRow = key => source[key][reports[key].rows.length%source[key].length];
+  const oneRow = (row,action,caption='Ver ficha')=>'<div class="cc-item"><b>'+esc(row.id)+(row.name?' · '+esc(row.name):'')+'</b><small>'+esc(row.provider)+' · '+esc(row.time)+' · '+esc(row.meter)+' h</small>'+photoStatus(row)+' '+btn(action,caption,'quiet')+'</div>';
+  const dateLabel = ()=>receivedDate===dateValue?dayText:esc(receivedDate.split('-').reverse().join('/'));
+  function display(next,reverse=false){
+    const current=stage.querySelector('.cc-screen');
+    const reduced=globalThis.matchMedia?.('(prefers-reduced-motion: reduce)')?.matches;
+    const leaving=current?.animate&&!reduced?current.cloneNode(true):null;
+    view=next;backward=reverse;error='';notice='';render();
+    if(leaving){
+      const layer=document.createElement('div');
+      layer.className='cc-exiting';layer.inert=true;layer.setAttribute('aria-hidden','true');
+      leaving.querySelectorAll('[id]').forEach(el=>el.removeAttribute('id'));
+      layer.append(leaving);stage.prepend(layer);
+      layer.animate([{opacity:.78,transform:'translateX(0)'},{opacity:0,transform:'translateX('+(reverse?36:-36)+'px) scale(.97)'}],
+        {duration:225,fill:'forwards',easing:'ease-out'}).finished.then(()=>layer.remove(),()=>layer.remove());
+    }
+    const focusTarget=view==='capture'?stage.querySelector('input'):stage.querySelector('.cc-primary');
+    focusTarget?.focus({preventScroll:true});
+  }
+  function message(text){notice=text;render();}
+  function choose(key){
+    type=key;camera=false;
+    if(report().draft){display('capture');return;}
+    display(report().state==='closed'?'review':'phase');
+  }
+  function fields(){
+    const common=[
+      {key:'id',title:'Ficha de la mula',hint:'Escribe el código que ves en la mula.',example:'DEMO362'},
+      {key:'provider',title:'Proveedor',hint:'Indica a quién pertenece la mula.',example:'Proveedor A'},
+      {key:'time',title:type==='entry'?'Hora de entrada':'Hora de salida',hint:'Confirma la hora del movimiento.',input:'time'},
+      {key:'meter',title:'Lectura del horómetro',hint:'Escribe los números del reloj, incluido el decimal.',example:'111410.7'},
+      {key:'photo',title:'Foto del horómetro',hint:'Encuadra el reloj completo o el tablero.'}
+    ];
+    return type==='entry'?[{key:'name',title:'Nombre del mulero',hint:'Escribe el nombre completo.',example:'Mulero de ejemplo A'},...common]:common;
+  }
+  function gauge(meter,caption){
+    return '<div class="cc-photo cc-viewfinder" role="img" aria-label="'+esc(caption)+'"><div class="cc-gauge"><strong>'+esc(meter)+'</strong><small>'+esc(caption)+'</small></div></div>';
+  }
+  function capture(){
+    const current=report(), steps=fields(), field=steps[current.step];
+    const progress='<progress class="cc-line" max="'+steps.length+'" value="'+(current.step+1)+'" aria-label="Progreso de captura"></progress>';
+    let body;
+    if(field.key==='photo'){
+      if(camera) body=gauge(current.draft.meter,'Visor de ejemplo')+btn('snap','Capturar foto');
+      else if(current.draft.photo==='sample') body=gauge(current.draft.meter,'Foto de ejemplo')+btn('save','Usar esta foto y guardar')+btn('camera','Repetir foto','quiet');
+      else if(current.draft.photo==='omitted') body=pill('Foto omitida','warn')+btn('save','Guardar sin foto')+btn('camera','Tomar foto','quiet')+btn('gallery','Cargar imagen','quiet');
+      else body='<div class="cc-photo" aria-hidden="true">'+icon('camera')+'</div>'+btn('camera','Tomar foto')+btn('gallery','Cargar imagen','quiet')+btn('omit','Obviar foto','quiet');
+    } else {
+      body='<div class="cc-field '+(field.key==='meter'?'cc-led ':'')+(error?'cc-invalid':'')+'"><input id="cc-current" aria-label="'+field.title+'" '+(error?'aria-invalid="true" aria-describedby="cc-error" ':'')+
+        'type="'+(field.input||'text')+'" '+(field.key==='meter'?'inputmode="decimal" ':'')+' value="'+esc(current.draft[field.key])+'" placeholder="'+esc(field.example)+'" autocomplete="off"></div>'+
+        (error?'<p id="cc-error" class="cc-alert" role="alert">'+esc(error)+'</p>':'')+btn('next','Siguiente <span aria-hidden="true">→</span>');
+    }
+    return '<div class="cc-nav">'+btn('capture-back','← Atrás','quiet')+'<span class="cc-meta">'+types[type]+' · '+(current.step+1)+' de '+steps.length+'</span></div>'+
+      progress+head(field.title,field.hint)+body;
+  }
+  function newCapture(index=null){
+    report().editIndex=index;camera=false;
+    report().draft={...(index===null?demoRow(type):report().rows[index]),...(index===null?{photo:null}:{})};
+    report().step=0;display('capture');
+  }
+  function nextField(){
+    const current=report(), field=fields()[current.step], input=stage.querySelector('#cc-current');
+    const value=(input?.value||'').trim();
+    if(!value||(field.key==='meter'&&!/^\d+(?:[.,]\d+)?$/.test(value))){
+      error=field.key==='meter'?'Escribe la lectura en números, por ejemplo 111410.7.':'Completa este dato para continuar.';
+      render();stage.querySelector('#cc-current')?.focus({preventScroll:true});return;
+    }
+    current.draft[field.key]=value;current.step+=1;display('capture');
+  }
+  function save(){
+    const current=report();
+    if(current.editIndex===null)current.rows.push({...current.draft});
+    else current.rows[current.editIndex]={...current.draft};
+    current.draft=null;current.step=0;current.state='active';current.editIndex=null;display('saved');
+  }
+  function review(){
+    const current=report(), closed=current.state==='closed';
+    return nav('select',types[type])+head(count(current.rows.length),closed?'Jornada de '+labels[type]+' cerrada':'Revisa cada ficha antes de finalizar.', 'Reporte de '+types[type].toLowerCase())+
+      list(current.rows.map((row,i)=>oneRow(row,'own:'+i,closed?'Ver ficha':'Revisar ficha')).join(''))+
+      (closed?btn('go:share','Compartir por WhatsApp'):btn('close',type==='entry'?'Cerrar jornada de inicio':'Cerrar jornada de salida'))+
+      btn('operator-pdf','Vista previa del PDF','outline')+
+      (closed?btn('reopen','Continuar esta jornada','quiet'):btn('go:phase','Agregar más mulas','quiet'));
+  }
+  function previewRow(row){
+    return '<div class="cc-doc-entry"><div><b>'+esc(row.id)+'</b> '+esc(row.name)+'<br>'+esc(row.provider)+' · '+esc(row.time)+'<br>'+esc(row.meter)+' h</div>'+
+      (row.photo==='omitted'?pill('Foto omitida','warn'):'<span class="cc-thumb" aria-label="Imagen de muestra">'+esc(row.meter)+'</span>')+'</div>';
+  }
+  function pdf(operator){
+    const all = !operator && pdfMode!=='single';
+    const rows = operator?report().rows:received[type];
+    let content;
+    if(all && pdfMode==='linked'){
+      content=pairs.map(([a,b])=>'<p class="cc-subhead">'+esc(received.entry[a].id)+' ↔ '+esc(received.exit[b].id)+'</p>'+previewRow(received.entry[a],'entry')+previewRow(received.exit[b],'exit')).join('');
+      content+=Object.keys(types).map(key=>'<p class="cc-subhead">'+types[key]+' pendiente</p>'+received[key].filter((_,i)=>!pairs.some(pair=>pair[key==='entry'?0:1]===i)).map(row=>previewRow(row,key)).join('')).join('');
+    }else if(all){
+      content=Object.keys(types).map(key=>'<p class="cc-subhead">'+types[key]+'</p>'+received[key].map(row=>previewRow(row,key)).join('')).join('');
+    }else content=rows.slice(page*3,page*3+3).map(row=>previewRow(row,type)).join('');
+    const pages=all?1:Math.max(1,Math.ceil(rows.length/3));
+    return nav(operator?'review':'exports','Vista previa')+head(all?'PDF de jornada':'Conduces de '+types[type].toLowerCase(),operator?dayText:dateLabel())+
+      '<div class="cc-paper">'+(content||'<p>Sin fichas.</p>')+'</div>'+
+      '<div class="cc-nav">'+btn('pdf-prev','← Anterior','quiet',page===0?'disabled':'')+'<span class="cc-meta">Página '+(page+1)+' de '+pages+'</span>'+btn('pdf-next','Siguiente →','quiet',page+1>=pages?'disabled':'')+'</div>'+
+      (!operator?btn('mock:Impresión de PDF simulada','Imprimir PDF'):'')+status();
+  }
+  function detail(admin){
+    const row=(admin?received[type]:report().rows)[detailIndex];
+    return nav(admin?'received':'review',types[type])+head(esc(row.id),esc(row.name||row.provider),admin?'Ficha recibida':'Conduce')+
+      box('<b>'+esc(row.provider)+'</b><small>'+esc(row.time)+' · '+esc(row.meter)+' horas</small>')+
+      (row.photo==='omitted'?pill('Foto omitida','warn'):gauge(row.meter,'Foto de ejemplo'))+
+      (!admin&&report().state!=='closed'?btn('edit:'+detailIndex,'Corregir ficha'):'');
+  }
+  function operator(){
+    switch(view){
+      case 'home': return btn('start',Object.values(reports).some(r=>r.state==='active'||r.draft)?'Continuar proceso →':'Iniciar día →');
+      case 'select': return nav('home',dayText)+head('Jornada de mulas')+
+        list(Object.keys(types).map(key=>btn('choose:'+key,reports[key].state==='closed'?'Ver reporte de '+labels[key]:reports[key].draft||reports[key].state==='active'?'Continuar '+labels[key]:key==='entry'?'Registrar entrada':'Registrar salida',key==='entry'?'primary':'outline')).join(''))+
+        btn('go:history','Historial y archivos','quiet')+btn('go:backup','Respaldo y restauración','quiet')+btn('go:config','Configuración del celular','quiet');
+      case 'phase': return nav('select',dayText)+head(type==='entry'?'Inicio de jornada':'Cierre de jornada',report().rows.length?count(report().rows.length):'',types[type])+
+        btn(report().draft?'choose:'+type:'add',report().draft?'Continuar ficha':'Agregar mula ＋')+
+        (report().rows.length?btn('go:review','Ya no hay más mulas','quiet'):'');
+      case 'capture': return capture();
+      case 'saved': return '<div class="cc-confirm" aria-hidden="true">✓</div><div role="status">'+head('Mula registrada',count(report().rows.length))+'</div>'+
+        btn('add','Agregar otra mula')+btn('go:review','Ya no hay más mulas','quiet');
+      case 'review': return review();
+      case 'own': return detail(false);
+      case 'operator-pdf': return pdf(true);
+      case 'share': return nav('review','Compartir')+head('Compartir por WhatsApp','Se adjuntan estos dos archivos.')+
+        list(box('<b>'+baseName()+'.pdf</b><small>Conduces para ver e imprimir</small>')+box('<b>'+baseName()+'.sqlite</b><small>Archivo cifrado para importar</small>'))+
+        btn('send','Simular envío por WhatsApp');
+      case 'sent': return '<div class="cc-confirm" aria-hidden="true">✓</div>'+head('Envío simulado','Los archivos quedan disponibles en el historial de la muestra.')+
+        btn('go:history','Ver historial')+btn('go:select',type==='entry'?'Ir al cierre de jornada':'Volver a la jornada','quiet');
+      case 'history': {
+        const files=Object.keys(types).filter(key=>reports[key].state==='closed'||reports[key].shared);
+        return nav('select','Archivos del celular')+head('Historial y archivos',dayText)+
+          (files.length?list(files.map(key=>box('<b>Reporte de '+labels[key]+'</b><small>PDF · SQLite · Carpeta Fotos</small>'+
+            btn('choose:'+key,'Ver reporte','quiet')+btn('archive:'+key,'Ver archivos','quiet')+(reports[key].state==='closed'?btn('reshare:'+key,'Reenviar','quiet'):''))).join('')):'<p class="cc-hint">Los reportes cerrados aparecerán aquí.</p>');
+      }
+      case 'archive': return nav('history','Carpeta local')+head('Archivos de '+labels[type],dayText)+
+        box('<b>'+baseName()+'.pdf</b><b>'+baseName()+'.sqlite</b>')+
+        list(report().rows.filter(row=>row.photo!=='omitted').map(row=>box('<small>Fotos / '+photoName(row,type)+'</small>')).join(''));
+      case 'backup': return nav('select','Archivos del celular')+head('Respaldo y restauración','Reportes, borradores, fotos comprimidas y actividad.')+
+        btn('mock:Respaldo cifrado de muestra preparado','Exportar respaldo')+btn('go:restore','Restaurar en otro celular','outline')+status();
+      case 'restore': return nav('backup','Restauración')+head('Restaurar respaldo','Selecciona un archivo cifrado en la versión final.')+
+        box('<b>Respaldo de ejemplo.sqlite</b>')+btn('mock:Restauración de ejemplo completada','Simular restauración')+status();
+      case 'config': return nav('select','Configuración')+head('Configurar celular','La clave compartida se introduce al configurar la instalación.')+
+        '<label class="cc-field"><input type="password" aria-label="Clave de ejemplo" placeholder="Clave de ejemplo" autocomplete="off"></label>'+
+        btn('mock:Configuración simulada','Guardar configuración')+status();
+    }
+  }
+  function admin(){
+    switch(view){
+      case 'home': return head('Reportes de jornada','Recibe los archivos de entrada y salida.')+
+        btn('go:import','Importar reporte')+btn('go:received','Ver jornada recibida','outline')+
+        btn('go:audit','Auditoría','quiet')+btn('admin-operator','Capturar como operador','quiet');
+      case 'import': return nav('home','Administrador')+head('Importar reporte','Cada archivo se agrega por separado.')+
+        '<label class="cc-meta">Fecha operativa<span class="cc-field"><input id="cc-date" type="date" value="'+esc(importDate)+'"></span></label>'+
+        btn('import:entry','Importar entrada de ejemplo')+btn('import:exit','Importar salida de ejemplo','outline')+status()+
+        btn('go:received','Ver jornada recibida','quiet');
+      case 'received': {
+        const total=received.entry.length+received.exit.length;
+        return nav('home','Administrador')+head('Jornada recibida',dateLabel())+
+          Object.keys(types).map(key=>box('<b>'+received[key].length+' '+(key==='entry'?'entradas':'salidas')+'</b><small>Reporte de '+labels[key]+'</small>'+
+          received[key].map((row,i)=>oneRow(row,'received-detail:'+key+':'+i)).join(''))).join('')+
+          (total?btn('go:match','Vincular fichas manualmente')+btn('go:exports','Ver reportes y exportar','outline'):btn('go:import','Importar reportes'));
+      }
+      case 'received-detail': return detail(true);
+      case 'match': {
+        const canLink=selected.entry!==null&&selected.exit!==null;
+        const options=Object.keys(types).map((key,side)=>'<div class="cc-list"><b>'+types[key]+'</b>'+received[key].map((row,i)=>{
+          const linked=pairs.some(pair=>pair[side]===i);
+          return btn('pick:'+key+':'+i,esc(row.id)+'<br><small>'+esc(row.time)+(linked?' · Vinculada':'')+'</small>','outline','aria-pressed="'+(selected[key]===i)+'" '+(linked?'disabled':''));
+        }).join('')+'</div>').join('');
+        return nav('received',dateLabel())+head('Vincular fichas','Elige una entrada y una salida.')+
+          '<div class="cc-pair">'+options+'</div>'+btn('link','Vincular selección','primary',canLink?'':'disabled')+
+          list(pairs.map(([a,b],i)=>box('<b>'+esc(received.entry[a].id)+' ↔ '+esc(received.exit[b].id)+'</b>'+btn('unlink:'+i,'Quitar vínculo','quiet'))).join(''))+
+          btn('admin-pdf:separate','Ver listas separadas para imprimir','outline');
+      }
+      case 'exports': return nav('received',dateLabel())+head('Reportes y exportación')+
+        btn('admin-pdf:separate','PDF · Entradas y salidas separadas')+btn('admin-pdf:linked','PDF · Con vínculos manuales','outline')+
+        btn('admin-pdf:single:entry','PDF · Solo entradas','outline')+btn('admin-pdf:single:exit','PDF · Solo salidas','outline')+
+        btn('go:excel','Ver reporte Excel','outline')+btn('go:jpg','Exportar fotos JPG','outline');
+      case 'admin-pdf': return pdf(false);
+      case 'excel': {
+        const rows=excelTab==='linked'?pairs.map(([a,b])=>[received.entry[a].id,received.exit[b].id,'Confirmado']):received[excelTab].map(row=>[row.id,row.time,row.meter+' h · '+(row.photo==='omitted'?'Foto omitida':'Foto disponible')]);
+        const columns=excelTab==='linked'?['Entrada','Salida','Estado']:['Ficha','Hora','Lectura y foto'];
+        return nav('exports','Vista previa')+head('Reporte Excel')+
+          '<div class="cc-nav">'+['entry','exit','linked'].map(key=>btn('tab:'+key,key==='linked'?'Vínculos':types[key],'outline','aria-pressed="'+(excelTab===key)+'"')).join('')+'</div>'+
+          table(columns,rows)+btn('mock:Exportación Excel simulada','Exportar Excel')+status();
+      }
+      case 'jpg': return nav('exports','Imágenes')+head('Fotos JPG','Carpeta de destino de ejemplo')+
+        list(Object.keys(types).map(key=>box('<b>'+types[key]+'</b>'+received[key].filter(row=>row.photo!=='omitted').map(row=>'<small>'+photoName(row,key)+'</small>').join(''))).join(''))+
+        btn('mock:Exportación a carpeta simulada','Elegir carpeta y exportar')+status();
+      case 'audit': return nav('home','Administrador')+head('Auditoría','Registro de actividad de la app.')+
+        table(['Usuario','Acción'],audit.length?audit:[['Operador · OP-01','07:04 · Guardó entrada DEMO362'],['Operador · OP-02','19:16 · Marcó foto omitida']])+
+        btn('mock:Exportación de auditoría simulada','Exportar tabla')+status();
+    }
+  }
+  function table(columns,rows){
+    return '<table class="cc-table"><thead><tr>'+columns.map(col=>'<th scope="col">'+col+'</th>').join('')+'</tr></thead><tbody>'+
+      rows.map(row=>'<tr>'+row.map(cell=>'<td>'+esc(cell)+'</td>').join('')+'</tr>').join('')+'</tbody></table>';
+  }
+  function render(){
+    stage.dataset.tone=error?'bad':['saved','sent'].includes(view)?'good':'plain';
+    stage.innerHTML='<div class="cc-screen '+(backward?'cc-backward':'')+'">'+(role==='operator'?operator():admin())+'</div>';
+    root.querySelectorAll('[data-role]').forEach(button=>button.setAttribute('aria-pressed',String(button.dataset.role===role)));
+    if(globalThis.lucide)globalThis.lucide.createIcons({attrs:{width:44,height:44}});
+  }
+  stage.addEventListener('input',event=>{
+    if(event.target.id==='cc-date')importDate=event.target.value;
+    if(event.target.id==='cc-current')report().draft[fields()[report().step].key]=event.target.value;
+  });
+  stage.addEventListener('keydown',event=>{
+    if(event.target.id==='cc-current'&&event.key==='Enter'){event.preventDefault();nextField();}
+  });
+  root.addEventListener('click',event=>{
+    const target=event.target.closest('button');
+    if(!target||target.disabled)return;
+    if(target.dataset.role){role=target.dataset.role;display('home');return;}
+    const [action,a,b]=(target.dataset.action||'').split(':');
+    switch(action){
+      case 'go': display(a,target.classList.contains('cc-quiet'));break;
+      case 'start': {
+        const active=Object.keys(types).filter(key=>reports[key].state==='active'||reports[key].draft);
+        if(active.length===1)choose(active[0]);else display('select');
+        break;
+      }
+      case 'choose': choose(a);break;
+      case 'add': newCapture();break;
+      case 'next': nextField();break;
+      case 'capture-back':
+        camera=false;
+        if(report().step>0){report().step-=1;display('capture',true);}
+        else display('phase',true);
+        break;
+      case 'camera': camera=true;report().draft.photo=null;display('capture');break;
+      case 'gallery': case 'snap': camera=false;report().draft.photo='sample';display('capture');break;
+      case 'omit': camera=false;report().draft.photo='omitted';display('capture');break;
+      case 'save': save();break;
+      case 'close': report().state='closed';display('review');break;
+      case 'reopen': if(report().shared)report().version+=1;report().state='active';report().shared=false;display('phase');break;
+      case 'own': detailIndex=Number(a);display('own');break;
+      case 'edit': newCapture(Number(a));break;
+      case 'operator-pdf': page=0;display('operator-pdf');break;
+      case 'pdf-prev': case 'pdf-next': page+=action==='pdf-prev'?-1:1;render();break;
+      case 'send': report().shared=true;display('sent');break;
+      case 'archive': type=a;display('archive');break;
+      case 'reshare': type=a;display('share');break;
+      case 'admin-operator': role='operator';display('select');break;
+      case 'import':
+        if(!importDate){message('Selecciona la fecha operativa.');break;}
+        if((received.entry.length||received.exit.length)&&receivedDate!==importDate){message('La muestra permite revisar una fecha operativa a la vez.');break;}
+        if(received[a].length){message('Ese reporte de ejemplo ya está en la jornada.');break;}
+        receivedDate=importDate;received[a]=source[a].map(row=>({...row}));
+        audit.push(['Operador · '+(a==='entry'?'OP-01':'OP-02'),a==='entry'?'07:04 · Guardó entrada DEMO362':'19:16 · Marcó foto omitida en DEMO-362']);
+        audit.push(['Administrador · ADM-01','Importó reporte de '+labels[a]]);
+        message(types[a]+' importada · '+received[a].length+' fichas');break;
+      case 'received-detail': type=a;detailIndex=Number(b);display('received-detail');break;
+      case 'pick': selected[a]=Number(b);render();break;
+      case 'link': if(selected.entry===null||selected.exit===null)break;pairs.push([selected.entry,selected.exit]);selected.entry=null;selected.exit=null;audit.push(['Administrador · ADM-01','Vinculó dos fichas manualmente']);render();break;
+      case 'unlink': pairs.splice(Number(a),1);render();break;
+      case 'admin-pdf': pdfMode=a;if(b)type=b;page=0;display('admin-pdf');break;
+      case 'tab': excelTab=a;render();break;
+      case 'mock': message(a);break;
+    }
+  });
+  render();
+})();
+</script>
+</body>
+</html>
