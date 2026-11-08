@@ -1,0 +1,16 @@
+name: admin_data
+description: Recepción inmutable, cruces y auditoría de MuleAgent Administrador.
+version: 1.0.0
+publish_to: none
+environment:
+  sdk: '>=3.10.0 <4.0.0'
+dependencies:
+  mule_data:
+    path: ../mule_data
+  sqflite_common: ^2.5.6
+  uuid: ^4.5.1
+  crypto: ^3.0.7
+dev_dependencies:
+  test: ^1.26.0
+  sqflite_common_ffi: ^2.3.6
+  lints: ^6.0.0

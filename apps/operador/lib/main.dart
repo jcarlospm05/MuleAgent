@@ -74,8 +74,19 @@ class OperatorApp extends StatelessWidget {
 }
 
 class OperatorScreen extends StatefulWidget {
-  const OperatorScreen({super.key, this.repository});
+  const OperatorScreen({
+    super.key,
+    this.repository,
+    this.captureServices,
+    this.roleLabel = 'Operador',
+    this.showSettings = true,
+    this.onExit,
+  });
   final CaptureRepository? repository;
+  final OperatorServices? captureServices;
+  final String roleLabel;
+  final bool showSettings;
+  final VoidCallback? onExit;
   @override
   State<OperatorScreen> createState() => _OperatorScreenState();
 }
@@ -105,6 +116,7 @@ class _OperatorScreenState extends State<OperatorScreen> {
   Future<void> initialize() async {
     try {
       repo = widget.repository ?? await openRepository();
+      services = widget.captureServices;
       if (widget.repository == null) {
         services = await OperatorServices.create(repo!);
         repo!.operatorName = await repo!.setting('operator') ?? '';
@@ -470,9 +482,15 @@ class _OperatorScreenState extends State<OperatorScreen> {
               () => act(load),
               icon: Icons.play_circle_outline,
             ),
+          if (widget.onExit != null)
+            secondary(
+              'Volver al Administrador',
+              widget.onExit!,
+              icon: Icons.home_outlined,
+            ),
           secondary('Jornadas pendientes', () => listSessions(false)),
           secondary('Historial y archivos', () => listSessions(true)),
-          if (services != null) ...[
+          if (services != null && widget.showSettings) ...[
             secondary('Respaldo y restauración', () => go('backup')),
             secondary('Configuración', () {
               setupName = repo!.operatorName;
@@ -848,7 +866,7 @@ class _OperatorScreenState extends State<OperatorScreen> {
   void choose(Stage stage) {
     chosenStage = stage;
     chosenDate = DateTime.now();
-    if (widget.repository != null) {
+    if (widget.repository != null && widget.captureServices == null) {
       start();
     } else {
       go('date');
@@ -893,16 +911,16 @@ class _OperatorScreenState extends State<OperatorScreen> {
         backgroundColor: const Color(0xFFFFFDF8),
         surfaceTintColor: Colors.transparent,
         titleSpacing: 24,
-        title: const Row(
+        title: Row(
           children: [
-            AppLogo(),
-            SizedBox(width: 14),
+            const AppLogo(),
+            const SizedBox(width: 14),
             Expanded(
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(
+                  const Text(
                     'MuleAgent',
                     style: TextStyle(
                       fontSize: 23,
@@ -911,8 +929,11 @@ class _OperatorScreenState extends State<OperatorScreen> {
                     ),
                   ),
                   Text(
-                    'Operador',
-                    style: TextStyle(fontSize: 14, color: Color(0xFF4E5B73)),
+                    widget.roleLabel,
+                    style: const TextStyle(
+                      fontSize: 14,
+                      color: Color(0xFF4E5B73),
+                    ),
                   ),
                 ],
               ),
