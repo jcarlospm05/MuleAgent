@@ -29,6 +29,17 @@ android {
         versionName = flutter.versionName
     }
 
+    // CI supplies a keystore that is created before the build and cached explicitly.
+    val developmentKeystore = System.getenv("MULEAGENT_DEBUG_KEYSTORE")
+    if (developmentKeystore != null) {
+        signingConfigs.getByName("debug") {
+            storeFile = file(developmentKeystore)
+            storePassword = "android"
+            keyAlias = "androiddebugkey"
+            keyPassword = "android"
+        }
+    }
+
     buildTypes {
         release {
             // Production signing will be configured before distribution.
