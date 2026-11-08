@@ -1,6 +1,6 @@
 # MuleAgent
 
-Aplicaciones Android para registrar entradas y salidas de mulas rentadas. La entrega actual es **Operador 1.0.0**, con un objetivo por pantalla, funcionamiento sin conexión y almacenamiento cifrado. Administrador es el segundo APK planificado.
+Aplicaciones Android para registrar entradas y salidas de mulas rentadas. La entrega actual es **Operador 1.0.1**, con un objetivo por pantalla, funcionamiento sin conexión y almacenamiento cifrado. Administrador es el segundo APK planificado.
 
 - [`apps/operador`](apps/operador): captura, cámara, revisión, cierres, PDF, intercambio, historial y respaldos.
 - [`packages/mule_data`](packages/mule_data): dominio, SQLite, auditoría, revisiones, restauración y cifrado autenticado.
