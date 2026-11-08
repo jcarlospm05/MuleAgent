@@ -1,7 +1,7 @@
 enum Stage { entry, exit }
 
 extension StageLabel on Stage {
-  String get label => this == Stage.entry ? 'Entrada' : 'Salida';
+  String get label => this == Stage.entry ? 'Entrada' : 'Despacho';
 }
 
 class CaptureField {
