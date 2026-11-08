@@ -87,4 +87,4 @@ jobs:
             "MuleAgent-Operador-${operator_version}.zip" \
             --prerelease --target "$GITHUB_SHA" \
             --title "MuleAgent Operador ${operator_version} · prueba de campo" \
-            --notes-file docs/operador-v1.0.2.md
+            --notes-file docs/operador-v1.0.3.md
