@@ -1,16 +1,13 @@
 # MuleAgent
 
-Dos aplicaciones Android para registrar entradas y salidas de mulas rentadas. El desarrollo comienza por Operador y continúa con Administrador, con identificadores y almacenamiento independientes.
+Aplicaciones Android para registrar entradas y salidas de mulas rentadas. La entrega actual es **Operador 1.0.0**, con un objetivo por pantalla, funcionamiento sin conexión y almacenamiento cifrado. Administrador es el segundo APK planificado.
 
-## Desarrollo iniciado
+- [`apps/operador`](apps/operador): captura, cámara, revisión, cierres, PDF, intercambio, historial y respaldos.
+- [`packages/mule_data`](packages/mule_data): dominio, SQLite, auditoría, revisiones, restauración y cifrado autenticado.
+- [Guía de instalación, funciones y límites](docs/operador-v1.0.md).
+- [Arquitectura y contrato de intercambio](docs/arquitectura-datos-v1.md).
 
-- [`apps/operador`](apps/operador): aplicación Flutter, captura guiada y persistencia local SQLCipher.
-- [`packages/mule_data`](packages/mule_data): modelo, esquema SQLite, validaciones y repositorio transaccional compartido.
-- [Arquitectura y pendientes](docs/arquitectura-datos-v1.md).
-
-La base inicial permite registrar entrada y salida, retomar el paso persistido, revisar y editar fichas. Conserva un dato por pantalla. Evidencia mediante omisión expresa con motivo; cámara, cierre, PDF, envío, respaldo y Administrador siguen pendientes. No es todavía una APK terminada para operación en campo.
-
-## Validación
+## Compilación y pruebas
 
 ```sh
 cd packages/mule_data
@@ -20,17 +17,17 @@ dart test
 cd ../../apps/operador
 flutter pub get
 flutter analyze
-flutter test
+flutter test --timeout=120s
 flutter build apk --debug
 ```
 
-Usar Flutter 3.47.9 y Android SDK para compilar. GitHub Actions verifica análisis, pruebas y compilación de depuración; los tests locales no sustituyen una prueba en Android físico de SQLCipher, Keystore, cámara y compartir.
+Flutter 3.47.9, JDK 17 y Android SDK. GitHub Actions analiza, prueba y compila; conserva el APK como artefacto y publica una prerelease de desarrollo en la rama de implementación. No equivale a validación física ni a una distribución firmada para producción.
 
-## Referencias
+## Referencias de producto
 
 - [Prototipo aprobado](prototipo/conduces.html)
-- [Base original de diseño y flujo](docs/base-aprobada.md)
+- [Base original](docs/base-aprobada.md)
 - [Módulos del Administrador](docs/modulos-administrador.md)
 - [Plan maestro v2](https://docs.google.com/document/d/19a6wKi1g6V3FK0fXGAqGsATZPMZln6YXK2bkbEARnmE/edit)
 
-El plan v2 propone un paquete de intercambio cifrado versionado y respaldo con PDF exactos; esas propuestas actualizan la base original cuando se implementen y validen. El prototipo HTML usa datos de muestra y no persiste información.
+El plan v2 actualiza el intercambio a un paquete cifrado versionado y conserva los PDF exactos en el respaldo. El prototipo HTML es una referencia visual con datos de muestra.
