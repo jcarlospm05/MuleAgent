@@ -9,3 +9,5 @@
 **/*.keystore
 **/key.properties
 **/coverage/
+
+.signing/
