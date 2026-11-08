@@ -1,7 +1,7 @@
 import 'package:sqflite_common/sqlite_api.dart';
 
 /// v1: almacenamiento local. El cifrado lo aplica el adaptador de cada app.
-const schemaVersion = 1;
+const schemaVersion = 2;
 
 Future<void> configureDatabase(Database db) =>
     db.execute('PRAGMA foreign_keys = ON');
@@ -10,7 +10,23 @@ Future<void> createSchema(Database db, int version) async {
   for (final sql in schemaV1) {
     await db.execute(sql);
   }
+  await upgradeSchema(db, 1, version);
 }
+
+Future<void> upgradeSchema(Database db, int oldVersion, int newVersion) async {
+  if (oldVersion < 2 && newVersion >= 2) {
+    for (final sql in schemaV2) {
+      await db.execute(sql);
+    }
+  }
+}
+
+const schemaV2 = <String>[
+  "ALTER TABLE audit_events ADD COLUMN actor TEXT NOT NULL DEFAULT ''",
+  "ALTER TABLE audit_events ADD COLUMN details TEXT",
+  "CREATE TABLE settings (key TEXT PRIMARY KEY, value TEXT NOT NULL)",
+  "CREATE TABLE artifacts (revision_id TEXT PRIMARY KEY REFERENCES revisions(id), pdf_path TEXT NOT NULL, package_path TEXT NOT NULL, pdf_sha256 TEXT NOT NULL, created_at TEXT NOT NULL)",
+];
 
 const schemaV1 = <String>[
   '''CREATE TABLE reports (
