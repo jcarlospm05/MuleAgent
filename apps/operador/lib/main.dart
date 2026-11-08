@@ -5,6 +5,7 @@ import 'package:mule_data/mule_data.dart';
 import 'database.dart';
 import 'services.dart';
 import 'motion.dart';
+import 'brand.dart';
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
@@ -39,10 +40,29 @@ class OperatorApp extends StatelessWidget {
         fillColor: Colors.white,
         border: OutlineInputBorder(borderRadius: BorderRadius.circular(18)),
       ),
+      outlinedButtonTheme: OutlinedButtonThemeData(
+        style: OutlinedButton.styleFrom(
+          minimumSize: const Size(48, 64),
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+          textStyle: const TextStyle(
+            fontFamily: 'Roboto',
+            fontSize: 18,
+            fontWeight: FontWeight.w600,
+          ),
+          side: const BorderSide(color: Color(0xFFCDD6E5), width: 1.5),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+          ),
+        ),
+      ),
       filledButtonTheme: FilledButtonThemeData(
         style: FilledButton.styleFrom(
-          minimumSize: const Size(double.infinity, 64),
-          textStyle: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
+          minimumSize: const Size(double.infinity, 80),
+          textStyle: const TextStyle(
+            fontFamily: 'Roboto',
+            fontSize: 22,
+            fontWeight: FontWeight.bold,
+          ),
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(18),
           ),
@@ -200,13 +220,15 @@ class _OperatorScreenState extends State<OperatorScreen> {
                 'Revisa el código. ¿Quieres registrar otra mula con el mismo código?',
               ),
               actions: [
-                TextButton(
+                OutlinedButton.icon(
                   onPressed: () => Navigator.pop(ctx, false),
-                  child: const Text('Corregir'),
+                  icon: const Icon(Icons.edit_outlined),
+                  label: const Text('Corregir'),
                 ),
-                FilledButton(
+                FilledButton.icon(
                   onPressed: () => Navigator.pop(ctx, true),
-                  child: const Text('Registrar otra'),
+                  icon: const Icon(Icons.add_circle_outline),
+                  label: const Text('Registrar otra'),
                 ),
               ],
             ),
@@ -263,15 +285,77 @@ class _OperatorScreenState extends State<OperatorScreen> {
     });
   }
 
-  Widget primary(String label, VoidCallback action) => FilledButton(
+  IconData actionIcon(String label) {
+    final text = label.toLowerCase();
+    if (text.startsWith('cerrar')) return Icons.task_alt_rounded;
+    if (text.contains('entrada')) return Icons.login_rounded;
+    if (text.contains('despacho')) return Icons.local_shipping_outlined;
+    if (text.contains('whatsapp') || text.contains('compartir')) {
+      return Icons.share_outlined;
+    }
+    if (text.contains('restaur')) return Icons.restore_rounded;
+    if (text.contains('respaldo')) return Icons.backup_outlined;
+    if (text.contains('configur')) return Icons.settings_outlined;
+    if (text.contains('pendiente')) return Icons.pending_actions_rounded;
+    if (text.contains('historial')) return Icons.history_rounded;
+    if (text.contains('guardar')) return Icons.save_alt_rounded;
+    if (text.contains('pdf')) return Icons.picture_as_pdf_outlined;
+    if (text.contains('cargar')) return Icons.photo_library_outlined;
+    if (text.contains('omisión')) return Icons.hide_image_outlined;
+    if (text.contains('fichas')) return Icons.assignment_outlined;
+    if (text.contains('foto')) return Icons.camera_alt_outlined;
+    if (text.contains('fecha')) return Icons.calendar_month_outlined;
+    if (text.contains('otra mula')) return Icons.add_circle_outline;
+    if (text.contains('no hay más')) return Icons.fact_check_outlined;
+    if (text.startsWith('volver')) return Icons.home_outlined;
+    return Icons.arrow_forward_rounded;
+  }
+
+  Widget buttonContents(String label, IconData icon, {bool large = false}) =>
+      Row(
+        children: [
+          Icon(icon, size: large ? 30 : 26),
+          const SizedBox(width: 14),
+          Expanded(child: Text(label, textAlign: TextAlign.center)),
+          SizedBox(width: large ? 30 : 26),
+        ],
+      );
+  Widget primary(
+    String label,
+    VoidCallback action, {
+    IconData? icon,
+    double height = 80,
+  }) => FilledButton(
     onPressed: busy ? null : action,
-    child: Text(label, textAlign: TextAlign.center),
+    style: FilledButton.styleFrom(
+      minimumSize: Size(double.infinity, height),
+      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 20),
+    ),
+    child: buttonContents(label, icon ?? actionIcon(label), large: true),
   );
-  Widget secondary(String label, VoidCallback action) => TextButton(
-    onPressed: busy ? null : action,
-    style: TextButton.styleFrom(minimumSize: const Size(48, 48)),
-    child: Text(label, textAlign: TextAlign.center),
-  );
+  Widget secondary(String label, VoidCallback action, {IconData? icon}) =>
+      Padding(
+        padding: const EdgeInsets.only(top: 10),
+        child: OutlinedButton(
+          onPressed: busy ? null : action,
+          style: OutlinedButton.styleFrom(
+            minimumSize: const Size(double.infinity, 64),
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+            foregroundColor: const Color(0xFF21355E),
+            backgroundColor: Colors.white,
+            side: const BorderSide(color: Color(0xFFCDD6E5), width: 1.5),
+            textStyle: const TextStyle(
+              fontFamily: 'Roboto',
+              fontSize: 18,
+              fontWeight: FontWeight.w600,
+            ),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(16),
+            ),
+          ),
+          child: buttonContents(label, icon ?? actionIcon(label)),
+        ),
+      );
   Widget title(String text, [String? hint]) => Column(
     crossAxisAlignment: CrossAxisAlignment.start,
     children: [
@@ -313,7 +397,7 @@ class _OperatorScreenState extends State<OperatorScreen> {
           ),
           field(label: 'Nombre del operador'),
           const SizedBox(height: 24),
-          primary('Siguiente →', () {
+          primary('Siguiente', () {
             if (input.text.trim().isEmpty || input.text.length > 100) {
               setState(
                 () => error = 'Escribe tu nombre, hasta 100 caracteres.',
@@ -332,7 +416,7 @@ class _OperatorScreenState extends State<OperatorScreen> {
           ),
           field(secret: true, label: 'Clave compartida'),
           const SizedBox(height: 24),
-          primary('Siguiente →', () {
+          primary('Siguiente', () {
             if (input.text.length < 12) {
               setState(() => error = 'Usa al menos 12 caracteres.');
               return;
@@ -366,22 +450,26 @@ class _OperatorScreenState extends State<OperatorScreen> {
         ]);
       case 'home':
         return stack([
-          if (session != null)
-            Padding(
-              padding: const EdgeInsets.only(bottom: 16),
-              child: Text('${session!.stage.label} · ${session!.date}'),
-            ),
           primary(
-            session == null ? 'Iniciar día' : 'Continuar proceso',
-            () => act(() async {
-              if (session != null) {
-                await load();
-              } else {
-                screen = 'select';
-              }
-            }),
+            'Entrada de mulas',
+            () => choose(Stage.entry),
+            icon: Icons.login_rounded,
+            height: 96,
           ),
-          secondary('Registrar otra etapa', () => go('select')),
+          const SizedBox(height: 16),
+          primary(
+            'Despacho mulas',
+            () => choose(Stage.exit),
+            icon: Icons.local_shipping_outlined,
+            height: 96,
+          ),
+          const SizedBox(height: 14),
+          if (session != null)
+            secondary(
+              'Continuar proceso pendiente',
+              () => act(load),
+              icon: Icons.play_circle_outline,
+            ),
           secondary('Jornadas pendientes', () => listSessions(false)),
           secondary('Historial y archivos', () => listSessions(true)),
           if (services != null) ...[
@@ -396,17 +484,18 @@ class _OperatorScreenState extends State<OperatorScreen> {
       case 'select':
         return stack([
           title('¿Qué vas a registrar?'),
-          primary('Registrar entrada', () => choose(Stage.entry)),
+          primary(
+            'Entrada de mulas',
+            () => choose(Stage.entry),
+            icon: Icons.login_rounded,
+            height: 96,
+          ),
           const SizedBox(height: 16),
-          OutlinedButton(
-            onPressed: busy ? null : () => choose(Stage.exit),
-            style: OutlinedButton.styleFrom(
-              minimumSize: const Size(double.infinity, 64),
-            ),
-            child: const Text(
-              'Registrar salida',
-              style: TextStyle(fontSize: 22),
-            ),
+          primary(
+            'Despacho mulas',
+            () => choose(Stage.exit),
+            icon: Icons.local_shipping_outlined,
+            height: 96,
           ),
         ]);
       case 'date':
@@ -469,7 +558,9 @@ class _OperatorScreenState extends State<OperatorScreen> {
       case 'closed':
         return stack([
           title(
-            '${session!.stage.label} cerrada',
+            session!.stage == Stage.entry
+                ? 'Entrada cerrada'
+                : 'Despacho cerrado',
             '${session!.date} · ${rows.length} fichas. Los archivos de esta revisión se conservan para reenviarlos.',
           ),
           primary(
@@ -649,7 +740,7 @@ class _OperatorScreenState extends State<OperatorScreen> {
           hasPhoto ||
           services == null ||
           draft!.values['evidence_state'] == 'omitted')
-        primary(photoStep ? 'Guardar ficha' : 'Siguiente →', next),
+        primary(photoStep ? 'Guardar ficha' : 'Siguiente', next),
     ]);
   }
 
@@ -688,11 +779,27 @@ class _OperatorScreenState extends State<OperatorScreen> {
       child: SafeArea(
         child: Column(
           children: [
-            Align(
-              alignment: Alignment.topRight,
-              child: IconButton(
-                onPressed: () => Navigator.pop(context),
-                icon: const Icon(Icons.close),
+            Padding(
+              padding: const EdgeInsets.all(16),
+              child: Row(
+                children: [
+                  const AppLogo(size: 40),
+                  const SizedBox(width: 12),
+                  const Expanded(
+                    child: Text(
+                      'MuleAgent',
+                      style: TextStyle(
+                        fontSize: 20,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ),
+                  OutlinedButton.icon(
+                    onPressed: () => Navigator.pop(context),
+                    icon: const Icon(Icons.close),
+                    label: const Text('Cerrar'),
+                  ),
+                ],
               ),
             ),
             Expanded(
@@ -725,24 +832,16 @@ class _OperatorScreenState extends State<OperatorScreen> {
                 })
               : null,
         ),
-        if (row['evidence_state'] == 'photo' && services != null)
-          Row(
-            children: [
-              Expanded(
-                child: secondary(
-                  'Ver foto',
-                  () =>
-                      showPhoto(services!.file(row['private_path'] as String)),
-                ),
-              ),
-              Expanded(
-                child: secondary(
-                  'Guardar original',
-                  () => act(() => services!.exportPhoto(row, session!)),
-                ),
-              ),
-            ],
+        if (row['evidence_state'] == 'photo' && services != null) ...[
+          secondary(
+            'Ver foto',
+            () => showPhoto(services!.file(row['private_path'] as String)),
           ),
+          secondary(
+            'Guardar original',
+            () => act(() => services!.exportPhoto(row, session!)),
+          ),
+        ],
       ]),
     ),
   );
@@ -783,6 +882,44 @@ class _OperatorScreenState extends State<OperatorScreen> {
       if (!didPop && !busy) back();
     },
     child: Scaffold(
+      appBar: AppBar(
+        automaticallyImplyLeading: false,
+        toolbarHeight:
+            ((MediaQuery.textScalerOf(context).scale(23) +
+                            MediaQuery.textScalerOf(context).scale(14)) *
+                        1.4 +
+                    24)
+                .clamp(80, 240),
+        backgroundColor: const Color(0xFFFFFDF8),
+        surfaceTintColor: Colors.transparent,
+        titleSpacing: 24,
+        title: const Row(
+          children: [
+            AppLogo(),
+            SizedBox(width: 14),
+            Expanded(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'MuleAgent',
+                    style: TextStyle(
+                      fontSize: 23,
+                      fontWeight: FontWeight.w800,
+                      color: Color(0xFF21355E),
+                    ),
+                  ),
+                  Text(
+                    'Operador',
+                    style: TextStyle(fontSize: 14, color: Color(0xFF4E5B73)),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
       resizeToAvoidBottomInset: true,
       body: SafeArea(
         child: LayoutBuilder(
@@ -799,15 +936,10 @@ class _OperatorScreenState extends State<OperatorScreen> {
                 mainAxisAlignment: MainAxisAlignment.center,
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  if (screen != 'home')
-                    Align(
-                      alignment: Alignment.centerLeft,
-                      child: TextButton.icon(
-                        onPressed: busy ? null : back,
-                        icon: const Icon(Icons.arrow_back),
-                        label: const Text('Atrás'),
-                      ),
-                    ),
+                  if (screen != 'home') ...[
+                    secondary('Atrás', back, icon: Icons.arrow_back_rounded),
+                    const SizedBox(height: 24),
+                  ],
                   AnimatedSwitcher(
                     duration: MediaQuery.disableAnimationsOf(context)
                         ? Duration.zero
