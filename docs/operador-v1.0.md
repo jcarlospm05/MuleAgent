@@ -17,6 +17,12 @@ Inicio con dos botones principales grandes: **Entrada de mulas** y **Despacho mu
 - Historial de todas las revisiones, vista e impresión de PDF, exportación de fotos originales y reapertura en una revisión nueva.
 - Respaldo `.mulebackup` cifrado de borradores, jornadas, auditoría, fotos y adjuntos exactos. Restauración con validación, sin sobrescribir registros locales distintos, y protección transaccional ante un conflicto.
 
+## Actualización desde 1.0.0
+
+La compilación 1.0.0 publicada no conservó su clave de firma: la caché apuntaba a un archivo que no existía. Android no acepta la 1.0.1 como actualización directa sobre esa instalación. Antes de desinstalar, guardar desde la app anterior un respaldo completo `.mulebackup` en Descargas o Drive, comprobar que existe y conservar la clave con la que se creó. Después instalar 1.0.1, configurar y restaurar el respaldo. No confundir el ZIP de instalación con el respaldo de registros.
+
+La nueva compilación crea el archivo de firma antes de compilar, lo usa explícitamente en Gradle y lo conserva en la caché de CI. Las claves privadas quedan fuera del repositorio. La distribución productiva requiere custodiar una firma estable independiente de la caducidad de las cachés de desarrollo.
+
 ## Primer uso
 
 1. Instalar el APK y abrir MuleAgent Operador. Android puede pedir habilitar la instalación desde el navegador o gestor de archivos utilizado.
