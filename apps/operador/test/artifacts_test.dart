@@ -50,6 +50,14 @@ void main() {
         await repo.complete(session, (await repo.draft(session))!);
         await repo.closeRevision(session);
         final first = await services.ensureArtifacts(session);
+        expect(
+          first['package_path'],
+          matches(
+            RegExp(
+              r'artifacts/.+/entrada_2026-11-07_\d{2}-\d{2}-\d{2}-\d{3}\.mule$',
+            ),
+          ),
+        );
         final pdf = await services
             .file(first['pdf_path'] as String)
             .readAsBytes();
