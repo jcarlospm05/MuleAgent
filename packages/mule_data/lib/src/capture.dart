@@ -37,7 +37,7 @@ class CaptureField {
     const CaptureField(
       'omission_reason',
       'Evidencia del tablero',
-      'En esta primera versión puedes registrar una omisión con su motivo. La cámara se incorporará después.',
+      'Fotografía el tablero completo o registra una omisión con su motivo.',
     ),
   ];
   String? validate(String value) {
