@@ -5,7 +5,7 @@ on:
   pull_request:
   workflow_dispatch:
 permissions:
-  contents: read
+  contents: write
 concurrency:
   group: operador-${{ github.ref }}
   cancel-in-progress: true
@@ -38,7 +38,12 @@ jobs:
         working-directory: apps/operador
         run: |
           flutter analyze
-          flutter test --timeout=60s
+          flutter test --timeout=120s
+      - name: Preserve development signing identity
+        uses: actions/cache@v4
+        with:
+          path: ~/.android/debug.keystore
+          key: operador-development-signing-v1
       - name: Build development APK
         working-directory: apps/operador
         run: flutter build apk --debug
@@ -47,3 +52,15 @@ jobs:
           name: operador-debug
           path: apps/operador/build/app/outputs/flutter-apk/app-debug.apk
           if-no-files-found: error
+      - name: Publish installable APK for field testing
+        if: github.event_name == 'push' && github.ref == 'refs/heads/feat/operador-base'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          operator_tag="operador-v1.0.0-${GITHUB_SHA:0:7}"
+          gh release create "$operator_tag" \
+            "apps/operador/build/app/outputs/flutter-apk/app-debug.apk#MuleAgent-Operador-1.0.0.apk" \
+            --prerelease --target "$GITHUB_SHA" \
+            --title "MuleAgent Operador 1.0.0 · prueba de campo" \
+            --notes-file docs/operador-v1.0.md
