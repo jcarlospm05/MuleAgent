@@ -58,9 +58,21 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         shell: bash
         run: |
-          operator_tag="operador-v1.0.0-${GITHUB_SHA:0:7}"
+          operator_version=$(python -c "from pathlib import Path; print(next(line.split()[1].split('+')[0] for line in Path('apps/operador/pubspec.yaml').read_text().splitlines() if line.startswith('version:')))")
+          export OPERATOR_VERSION="$operator_version"
+          python - <<'PYZIP'
+          from pathlib import Path
+          from zipfile import ZipFile, ZIP_DEFLATED
+          import os
+          version = os.environ['OPERATOR_VERSION']
+          archive = Path(f'MuleAgent-Operador-{version}.zip')
+          with ZipFile(archive, 'w', compression=ZIP_DEFLATED, compresslevel=6) as output:
+              output.write('apps/operador/build/app/outputs/flutter-apk/app-debug.apk', f'MuleAgent-Operador-{version}.apk')
+          PYZIP
+          operator_tag="operador-v${operator_version}-${GITHUB_SHA:0:7}"
           gh release create "$operator_tag" \
-            "apps/operador/build/app/outputs/flutter-apk/app-debug.apk#MuleAgent-Operador-1.0.0.apk" \
+            "apps/operador/build/app/outputs/flutter-apk/app-debug.apk#MuleAgent-Operador-${operator_version}.apk" \
+            "MuleAgent-Operador-${operator_version}.zip" \
             --prerelease --target "$GITHUB_SHA" \
-            --title "MuleAgent Operador 1.0.0 · prueba de campo" \
+            --title "MuleAgent Operador ${operator_version} · prueba de campo" \
             --notes-file docs/operador-v1.0.md
