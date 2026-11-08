@@ -42,10 +42,22 @@ jobs:
       - name: Preserve development signing identity
         uses: actions/cache@v4
         with:
-          path: ~/.android/debug.keystore
-          key: operador-development-signing-v1
+          path: .signing/operador-debug.keystore
+          key: operador-development-signing-v2
+      - name: Prepare persisted development keystore
+        shell: bash
+        run: |
+          mkdir -p .signing
+          if [ ! -f .signing/operador-debug.keystore ]; then
+            keytool -genkeypair -noprompt -keystore .signing/operador-debug.keystore \
+              -storepass android -keypass android -alias androiddebugkey \
+              -keyalg RSA -keysize 2048 -validity 10000 \
+              -dname "CN=MuleAgent Development, O=MuleAgent, C=DO"
+          fi
       - name: Build development APK
         working-directory: apps/operador
+        env:
+          MULEAGENT_DEBUG_KEYSTORE: ${{ github.workspace }}/.signing/operador-debug.keystore
         run: flutter build apk --debug
       - uses: actions/upload-artifact@v4
         with:
