@@ -231,7 +231,7 @@ class OperatorServices {
               children: [
                 pw.Text(
                   'Ficha ${row['code']}',
-                  style: pw.TextStyle(
+                  style: const pw.TextStyle(
                     fontSize: 18,
                     fontWeight: pw.FontWeight.bold,
                   ),
@@ -268,7 +268,7 @@ class OperatorServices {
             children: [
               pw.Text(
                 'MuleAgent · ${session.stage.label}',
-                style: pw.TextStyle(
+                style: const pw.TextStyle(
                   fontSize: 20,
                   fontWeight: pw.FontWeight.bold,
                 ),
