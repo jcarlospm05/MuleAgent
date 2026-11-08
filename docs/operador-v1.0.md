@@ -1,6 +1,10 @@
-# MuleAgent Operador 1.0.0
+# MuleAgent Operador 1.0.1
 
 APK instalable de prueba de campo, firmada para desarrollo. Android 7.0 (API 24) o posterior. No requiere cuenta ni conexión para capturar. El APK Administrador es una aplicación independiente y no forma parte de esta entrega.
+
+## Cambios de interfaz en 1.0.1
+
+Inicio con dos botones principales grandes: **Entrada de mulas** y **Despacho mulas**. Los accesos secundarios usan botones con borde, letrero e icono en todas las pantallas. El encabezado común incorpora el mismo logo M de la aplicación. Se conserva el acceso a los procesos pendientes y los registros existentes; el identificador interno de la etapa de despacho sigue siendo `exit`.
 
 ## Funciones
 
