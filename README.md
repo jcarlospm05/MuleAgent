@@ -1,18 +1,33 @@
 # MuleAgent
 
-Proyecto Android para registrar la entrada y salida de mulas rentadas. MuleAgent identifica el repositorio. El nombre comercial queda pendiente.
+Aplicaciones Android para registrar entradas y salidas de mulas rentadas. La entrega actual es **Operador 1.0.1**, con un objetivo por pantalla, funcionamiento sin conexión y almacenamiento cifrado. Administrador es el segundo APK planificado.
 
-| Aplicación | Alcance |
-| --- | --- |
-| **Operador** | Captura guiada sin conexión, revisión, cierre de cada etapa, envío, historial y respaldo. |
-| **Administrador** | Captura propia, recepción independiente de reportes, cruce manual, exportación y auditoría. |
+- [`apps/operador`](apps/operador): captura, cámara, revisión, cierres, PDF, intercambio, historial y respaldos.
+- [`packages/mule_data`](packages/mule_data): dominio, SQLite, auditoría, revisiones, restauración y cifrado autenticado.
+- [Guía de instalación, funciones y límites](docs/operador-v1.0.md).
+- [Arquitectura y contrato de intercambio](docs/arquitectura-datos-v1.md).
 
-Se entregarán **dos APK instalables por separado**, con identificadores de aplicación distintos y almacenamiento independiente. Ambos comparten los modelos y el formato de intercambio. El selector de perfil del prototipo sirve para probar ambas experiencias.
+## Compilación y pruebas
 
-## Referencia aprobada
+```sh
+cd packages/mule_data
+dart pub get
+dart analyze
+dart test
+cd ../../apps/operador
+flutter pub get
+flutter analyze
+flutter test --timeout=120s
+flutter build apk --debug
+```
 
-- [Prototipo navegable](prototipo/conduces.html)
-- [Diseño, modelo y flujo](docs/base-aprobada.md)
+Flutter 3.47.9, JDK 17 y Android SDK. GitHub Actions analiza, prueba y compila; conserva el APK como artefacto y publica una prerelease de desarrollo en la rama de implementación. No equivale a validación física ni a una distribución firmada para producción.
+
+## Referencias de producto
+
+- [Prototipo aprobado](prototipo/conduces.html)
+- [Base original](docs/base-aprobada.md)
 - [Módulos del Administrador](docs/modulos-administrador.md)
+- [Plan maestro v2](https://docs.google.com/document/d/19a6wKi1g6V3FK0fXGAqGsATZPMZln6YXK2bkbEARnmE/edit)
 
-Para probar el prototipo, abre `prototipo/conduces.html` en el navegador. Esta versión usa datos de ejemplo en memoria. Las pantallas de cámara, importación, exportación y envío muestran cómo funcionará el recorrido. El desarrollo y la compilación de los APK corresponden a una etapa posterior.
+El plan v2 actualiza el intercambio a un paquete cifrado versionado y conserva los PDF exactos en el respaldo. El prototipo HTML es una referencia visual con datos de muestra.
