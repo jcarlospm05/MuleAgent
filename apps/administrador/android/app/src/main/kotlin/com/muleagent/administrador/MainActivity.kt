@@ -3,6 +3,7 @@ package com.muleagent.administrador
 import android.content.Intent
 import android.net.Uri
 import android.os.Bundle
+import android.provider.OpenableColumns
 import io.flutter.embedding.android.FlutterActivity
 import io.flutter.embedding.engine.FlutterEngine
 import io.flutter.plugin.common.MethodChannel
@@ -56,45 +57,70 @@ class MainActivity : FlutterActivity() {
 
     @Suppress("DEPRECATION")
     private fun receiveIntent(source: Intent?) {
-        val uri: Uri? = when (source?.action) {
-            Intent.ACTION_VIEW -> source.data
-            Intent.ACTION_SEND -> source.getParcelableExtra(Intent.EXTRA_STREAM) as? Uri
-            else -> null
+        val uris: List<Uri> = when (source?.action) {
+            Intent.ACTION_VIEW -> listOfNotNull(source.data)
+            Intent.ACTION_SEND -> listOfNotNull(source.getParcelableExtra<Uri>(Intent.EXTRA_STREAM))
+            Intent.ACTION_SEND_MULTIPLE -> source.getParcelableArrayListExtra<Uri>(Intent.EXTRA_STREAM) ?: emptyList()
+            else -> emptyList()
         }
-        if (uri == null) return
+        if (uris.isEmpty()) return
+        val multiple = source?.action == Intent.ACTION_SEND_MULTIPLE
         setIntent(Intent(this, MainActivity::class.java))
         worker.execute {
-            var temporary: File? = null
-            try {
-                require(uri.scheme == "content") { "Selecciona un archivo local desde WhatsApp o Archivos." }
-                check((inbox.listFiles()?.count { it.extension == "mule" } ?: 0) < 3) {
-                    "Hay tres archivos pendientes. Impórtalos o descártalos antes de abrir otro."
+            val selected = if (multiple) uris.distinct().filter { isReportCandidate(it) } else uris
+            if (selected.isEmpty()) {
+                runOnUiThread {
+                    incomingError = "Comparte el archivo .mule del reporte. El PDF solo no contiene sus datos."
+                    channel?.invokeMethod("available", null)
                 }
-                val id = UUID.randomUUID().toString()
-                val copy = File(inbox, "$id.part")
-                temporary = copy
-                contentResolver.openInputStream(uri).use { input ->
-                    requireNotNull(input) { "No se pudo leer el archivo recibido." }
-                    copy.outputStream().use { output ->
-                        val buffer = ByteArray(64 * 1024)
-                        var size = 0L
-                        while (true) {
-                            val count = input.read(buffer)
-                            if (count < 0) break
-                            size += count
-                            require(size <= 300L * 1024 * 1024) { "El archivo supera 300 MB." }
-                            output.write(buffer, 0, count)
-                        }
-                        require(size > 0) { "El archivo está vacío." }
-                    }
-                }
-                check(copy.renameTo(File(inbox, "$id.mule"))) { "No se pudo guardar la copia recibida." }
-            } catch (e: Exception) {
-                temporary?.delete()
-                runOnUiThread { incomingError = e.message ?: "No se pudo recibir el archivo." }
             }
-            runOnUiThread { channel?.invokeMethod("available", null) }
+            selected.take(4).forEach { uri -> copyIncoming(uri) }
         }
+    }
+
+    private fun isReportCandidate(uri: Uri): Boolean {
+        if (uri.scheme != "content") return false
+        return try {
+            var name = ""
+            contentResolver.query(uri, arrayOf(OpenableColumns.DISPLAY_NAME), null, null, null)?.use { cursor ->
+                if (cursor.moveToFirst()) name = cursor.getString(0) ?: ""
+            }
+            name.endsWith(".mule", ignoreCase = true) ||
+                contentResolver.getType(uri) in setOf("application/vnd.muleagent.report", "application/octet-stream", "application/x-mule", "application/mule")
+        } catch (_: Exception) { false }
+    }
+
+    private fun copyIncoming(uri: Uri) {
+        var temporary: File? = null
+        try {
+            require(uri.scheme == "content") { "Selecciona un archivo local desde WhatsApp o Archivos." }
+            check((inbox.listFiles()?.count { it.extension == "mule" } ?: 0) < 3) {
+                "Hay tres archivos pendientes. Impórtalos o descártalos antes de abrir otro."
+            }
+            val id = UUID.randomUUID().toString()
+            val copy = File(inbox, "$id.part")
+            temporary = copy
+            contentResolver.openInputStream(uri).use { input ->
+                requireNotNull(input) { "No se pudo leer el archivo recibido." }
+                copy.outputStream().use { output ->
+                    val buffer = ByteArray(64 * 1024)
+                    var size = 0L
+                    while (true) {
+                        val count = input.read(buffer)
+                        if (count < 0) break
+                        size += count
+                        require(size <= 300L * 1024 * 1024) { "El archivo supera 300 MB." }
+                        output.write(buffer, 0, count)
+                    }
+                    require(size > 0) { "El archivo está vacío." }
+                }
+            }
+            check(copy.renameTo(File(inbox, "$id.mule"))) { "No se pudo guardar la copia recibida." }
+        } catch (e: Exception) {
+            temporary?.delete()
+            runOnUiThread { incomingError = e.message ?: "No se pudo recibir el archivo." }
+        }
+        runOnUiThread { channel?.invokeMethod("available", null) }
     }
 
     override fun onDestroy() {
