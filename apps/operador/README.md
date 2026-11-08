@@ -1,4 +1,4 @@
-# MuleAgent Operador 1.0.0
+# MuleAgent Operador 1.0.1
 
 Flutter 3.47.9 / Dart 3.13.7 · Android mínimo API 24 · `com.muleagent.operador`.
 
