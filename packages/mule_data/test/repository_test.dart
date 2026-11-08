@@ -64,22 +64,25 @@ void main() {
     expect(await repo.tickets(exit), isEmpty);
   });
 
-  test('incomplete capture cannot complete or close; transaction leaves draft intact', () async {
-    final session = await repo.start(Stage.entry, '2026-11-07');
-    await repo.addTicket(session);
-    final draft = (await repo.draft(session))!;
-    await expectLater(repo.complete(session, draft), throwsStateError);
-    await expectLater(
-      db.update(
-        'revisions',
-        {'status': 'closed', 'closed_at': 'now', 'current_ticket_id': null},
-        where: 'id=?',
-        whereArgs: [session.id],
-      ),
-      throwsA(isA<DatabaseException>()),
-    );
-    expect((await repo.draft(session))!.ticketId, draft.ticketId);
-  });
+  test(
+    'incomplete capture cannot complete or close; transaction leaves draft intact',
+    () async {
+      final session = await repo.start(Stage.entry, '2026-11-07');
+      await repo.addTicket(session);
+      final draft = (await repo.draft(session))!;
+      await expectLater(repo.complete(session, draft), throwsStateError);
+      await expectLater(
+        db.update(
+          'revisions',
+          {'status': 'closed', 'closed_at': 'now', 'current_ticket_id': null},
+          where: 'id=?',
+          whereArgs: [session.id],
+        ),
+        throwsA(isA<DatabaseException>()),
+      );
+      expect((await repo.draft(session))!.ticketId, draft.ticketId);
+    },
+  );
 
   test('complete, edit, revalidate and protect a closed revision', () async {
     final session = await repo.start(Stage.entry, '2026-11-07');
