@@ -5,6 +5,8 @@ import 'package:administrador/main.dart';
 import 'package:administrador/services.dart';
 import 'package:archive/archive.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'package:administrador/incoming.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:image/image.dart' as image;
 import 'package:mule_data/mule_data.dart';
@@ -248,6 +250,71 @@ void main() {
         EnginePhase.sendSemanticsUpdate,
         const Duration(seconds: 5),
       );
+      expect(tester.takeException(), isNull);
+    },
+  );
+  testWidgets(
+    'Android inbox opens receive screen at launch and while running, with explicit discard',
+    (tester) async {
+      final dir = (await tester.runAsync(
+        () => Directory.systemTemp.createTemp('admin_intents_'),
+      ))!;
+      final db = (await tester.runAsync(() => database(admin: true)))!;
+      final capture = CaptureRepository(db, deviceId: 'intents')
+        ..operatorName = 'Carlos';
+      final repo = AdminRepository(db, device: 'intents', actor: 'Carlos');
+      String? queued = '/private/inbox/first.mule';
+      final removed = <String>[];
+      final messenger =
+          TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger;
+      messenger.setMockMethodCallHandler(IncomingReports.channel, (call) async {
+        if (call.method == 'peek') return queued;
+        if (call.method == 'remove') {
+          removed.add(call.arguments['path'] as String);
+          queued = null;
+        }
+        return null;
+      });
+      addTearDown(() async {
+        messenger.setMockMethodCallHandler(IncomingReports.channel, null);
+        await tester.runAsync(() async {
+          await db.close();
+          await dir.delete(recursive: true);
+        });
+      });
+      await tester.pumpWidget(
+        AdministratorApp(
+          bundle: AdminBundle(
+            capture,
+            repo,
+            AdminServices(repo, capture, LocalServices(capture, dir)),
+          ),
+        ),
+      );
+      await tester.runAsync(
+        () => Future<void>.delayed(const Duration(milliseconds: 200)),
+      );
+      await tester.pumpAndSettle();
+      expect(find.text('Importar archivo recibido'), findsOneWidget);
+      await tester.ensureVisible(find.text('Descartar archivo recibido'));
+      await tester.tap(find.text('Descartar archivo recibido'));
+      await tester.pumpAndSettle();
+      expect(removed, ['/private/inbox/first.mule']);
+      expect(find.text('Elegir archivo e importar'), findsOneWidget);
+      await tester.ensureVisible(find.text('Atrás'));
+      await tester.tap(find.text('Atrás'));
+      await tester.pumpAndSettle();
+      queued = '/private/inbox/second.mule';
+      await messenger.handlePlatformMessage(
+        'muleagent/incoming',
+        const StandardMethodCodec().encodeMethodCall(
+          const MethodCall('available'),
+        ),
+        (_) {},
+      );
+      await tester.pumpAndSettle();
+      expect(find.text('Importar archivo recibido'), findsOneWidget);
+      expect(await tester.runAsync(() => repo.reports()), isEmpty);
       expect(tester.takeException(), isNull);
     },
   );

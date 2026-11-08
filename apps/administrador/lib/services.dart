@@ -46,14 +46,15 @@ class AdminServices {
     if (selected == null) return null;
     final path = selected.files.single.path;
     if (path == null) throw StateError('No se pudo abrir el archivo.');
+    return importPath(path, key ?? await storage.password());
+  }
+
+  Future<Receipt> importPath(String path, String key) async {
     final file = File(path);
     if (await file.length() > PackageCodec.maxBytes * 2) {
       throw StateError('Archivo demasiado grande.');
     }
-    return importBytes(
-      await file.readAsBytes(),
-      key ?? await storage.password(),
-    );
+    return importBytes(await file.readAsBytes(), key);
   }
 
   Future<Receipt> importBytes(Uint8List bytes, String key) async {

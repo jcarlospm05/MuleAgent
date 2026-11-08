@@ -1,6 +1,6 @@
-# MuleAgent Administrador 1.0.0
+# MuleAgent Administrador 1.0.1
 
-Aplicación Android independiente, compatible con el paquete `.mule` del Operador 1.0.1. Android 7.0 (API 24) o posterior. Identificador `com.muleagent.administrador`, almacenamiento SQLCipher y claves Keystore propios. Se puede instalar junto al Operador.
+Aplicación Android independiente, compatible con el paquete `.mule` del Operador 1.0.1 y 1.0.2. Android 7.0 (API 24) o posterior. Identificador `com.muleagent.administrador`, almacenamiento SQLCipher y claves Keystore propios. Se puede instalar junto al Operador.
 
 ## Primer uso
 
@@ -31,4 +31,8 @@ Las pruebas automáticas no sustituyen una prueba en Android real de instalació
 
 Se conservan los límites del intercambio del Operador: hasta 1.000 fichas por paquete, 20 MB por foto y 100 MB de archivos por conjunto exportado, con 150 MB de contenido estructurado antes de cifrar. Los respaldos grandes no se dividen automáticamente. Conservar paquetes originales y respaldos fuera del celular.
 
-La recepción se inicia desde el selector de archivos de la aplicación. Esta versión no registra una asociación automática del tipo `.mule` en la hoja Abrir con de Android.
+La recepción se inicia desde el selector de archivos o eligiendo Administrador en Abrir con / Compartir de Android. Se aceptan documentos con MIME application/vnd.muleagent.report, application/octet-stream, application/x-mule o application/mule. La disponibilidad en el menú depende del MIME y los permisos que entregue la aplicación de origen. Si WhatsApp no ofrece Abrir con, usar Compartir o guardar y seleccionar desde Administrador.
+
+Android copia el documento concedido a una bandeja privada (máximo tres pendientes y 300 MB por archivo). Administrador presenta la confirmación, permite introducir otra clave y verifica el contenido antes de importar. Si falta la configuración inicial, espera a que se complete. Funciona al iniciar y con la app abierta. Tras importar o descartar se elimina solo la copia de la bandeja; el documento de origen permanece. El selector manual sigue disponible. Las pruebas simulan recepción en arranque y durante el uso; validar también con los proveedores del teléfono real.
+
+Las capturas propias usan la nomenclatura entrada_AAAA-MM-DD_HH-mm-ss-SSS.mule o salida_AAAA-MM-DD_HH-mm-ss-SSS.mule del Operador 1.0.2.

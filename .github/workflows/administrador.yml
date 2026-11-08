@@ -81,13 +81,13 @@ jobs:
         run: |
           python - <<'PY'
           from zipfile import ZipFile, ZIP_DEFLATED
-          with ZipFile('MuleAgent-Administrador-1.0.0.zip','w',ZIP_DEFLATED,compresslevel=6) as output:
-              output.write('apps/administrador/build/app/outputs/flutter-apk/app-debug.apk','MuleAgent-Administrador-1.0.0.apk')
+          with ZipFile('MuleAgent-Administrador-1.0.1.zip','w',ZIP_DEFLATED,compresslevel=6) as output:
+              output.write('apps/administrador/build/app/outputs/flutter-apk/app-debug.apk','MuleAgent-Administrador-1.0.1.apk')
           PY
-          admin_tag="administrador-v1.0.0-${GITHUB_SHA:0:7}"
+          admin_tag="administrador-v1.0.1-${GITHUB_SHA:0:7}"
           gh release create "$admin_tag" \
-            "apps/administrador/build/app/outputs/flutter-apk/app-debug.apk#MuleAgent-Administrador-1.0.0.apk" \
-            "MuleAgent-Administrador-1.0.0.zip" \
+            "apps/administrador/build/app/outputs/flutter-apk/app-debug.apk#MuleAgent-Administrador-1.0.1.apk" \
+            "MuleAgent-Administrador-1.0.1.zip" \
             --prerelease --target "$GITHUB_SHA" \
-            --title "MuleAgent Administrador 1.0.0 · prueba de campo" \
+            --title "MuleAgent Administrador 1.0.1 · prueba de campo" \
             --notes-file docs/administrador-v1.0.md

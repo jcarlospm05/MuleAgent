@@ -14,6 +14,7 @@ import 'package:pdf/widgets.dart' as pw;
 import 'package:printing/printing.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:uuid/uuid.dart';
+import 'report_filename.dart';
 
 Future<Uint8List> encryptPayload(Map<String, dynamic> args) =>
     PackageCodec().encode(
@@ -173,8 +174,15 @@ class OperatorServices {
     }
     final snapshot = await repo.snapshot(revisionId: session.id);
     final pdfBytes = await renderPdf(session);
-    final pdfPath = 'artifacts/${session.id}.pdf';
-    final packagePath = 'artifacts/${session.id}.mule';
+    final revision = (await repo.db.query(
+      'revisions',
+      where: 'id=?',
+      whereArgs: [session.id],
+    )).single;
+    final closedAt = DateTime.parse(revision['closed_at'] as String);
+    final base = reportFilenameBase(session.stage, session.date, closedAt);
+    final pdfPath = 'artifacts/${session.id}/$base.pdf';
+    final packagePath = 'artifacts/${session.id}/$base.mule';
     await writeAtomic(pdfPath, pdfBytes);
     final payload = await includeFiles(snapshot, extra: [pdfPath]);
     payload['pdf'] = {
@@ -191,7 +199,7 @@ class OperatorServices {
       'pdf_path': pdfPath,
       'package_path': packagePath,
       'pdf_sha256': sha256.convert(pdfBytes).toString(),
-      'created_at': DateTime.now().toUtc().toIso8601String(),
+      'created_at': closedAt.toUtc().toIso8601String(),
     };
     await repo.db.insert('artifacts', record);
     return record;
@@ -302,12 +310,11 @@ class OperatorServices {
 
   Future<void> share(CaptureSession session) async {
     final record = await ensureArtifacts(session);
-    final number = (await repo.db.query(
-      'revisions',
-      where: 'id=?',
-      whereArgs: [session.id],
-    )).single['number'];
-    final base = '${session.stage.label} ${session.date} r$number';
+    final base = reportFilenameBase(
+      session.stage,
+      session.date,
+      DateTime.parse(record['created_at'] as String),
+    );
     await repo.recordShare(session);
     await SharePlus.instance.share(
       ShareParams(
@@ -452,13 +459,11 @@ class OperatorServices {
 
   Future<void> exportArtifacts(CaptureSession session) async {
     final record = await ensureArtifacts(session);
-    final revision = (await repo.db.query(
-      'revisions',
-      where: 'id=?',
-      whereArgs: [session.id],
-    )).single;
-    final base =
-        '${session.stage.label} ${session.date} r${revision['number']}';
+    final base = reportFilenameBase(
+      session.stage,
+      session.date,
+      DateTime.parse(record['created_at'] as String),
+    );
     for (final item in [('pdf_path', 'pdf'), ('package_path', 'mule')]) {
       final saved = await FilePicker.platform.saveFile(
         dialogTitle: 'Guardar ${item.$2.toUpperCase()}',

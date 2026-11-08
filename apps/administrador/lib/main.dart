@@ -1,5 +1,8 @@
 import 'package:admin_data/admin_data.dart';
+import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'incoming.dart';
 import 'package:mule_data/mule_data.dart';
 import 'package:operador/brand.dart';
 import 'package:operador/main.dart';
@@ -103,6 +106,8 @@ class _AdminScreenState extends State<AdminScreen> {
   bool busy = true;
   String route = 'home';
   String? error, notice;
+  String? incomingPath;
+  bool checkingIncoming = false;
   final trail = <String>[];
   final input = TextEditingController(),
       personFilter = TextEditingController(),
@@ -124,6 +129,9 @@ class _AdminScreenState extends State<AdminScreen> {
   @override
   void initState() {
     super.initState();
+    IncomingReports.channel.setMethodCallHandler((call) async {
+      if (call.method == 'available') await offerIncoming();
+    });
     initialize();
   }
 
@@ -146,11 +154,48 @@ class _AdminScreenState extends State<AdminScreen> {
       error =
           'No se pudo abrir el almacenamiento seguro. Los datos se conservaron.';
     }
-    if (mounted) setState(() => busy = false);
+    if (mounted) {
+      setState(() => busy = false);
+      await offerIncoming();
+    }
+  }
+
+  Future<void> offerIncoming() async {
+    if (!mounted ||
+        busy ||
+        checkingIncoming ||
+        incomingPath != null ||
+        b == null ||
+        ['name', 'key', 'confirmKey'].contains(route)) {
+      return;
+    }
+    checkingIncoming = true;
+    try {
+      final path = await IncomingReports.peek();
+      if (mounted && path != null) {
+        setState(() {
+          incomingPath = path;
+          trail.add(route);
+          route = 'receive';
+          input.clear();
+          notice =
+              'Archivo recibido desde Android. Confirma para verificarlo e importarlo.';
+        });
+      }
+    } on PlatformException catch (e) {
+      if (mounted) {
+        setState(() => error = e.message ?? 'No se pudo recibir el archivo.');
+      }
+    } on MissingPluginException {
+      // Other Flutter platforms use the regular file picker.
+    } finally {
+      checkingIncoming = false;
+    }
   }
 
   @override
   void dispose() {
+    IncomingReports.channel.setMethodCallHandler(null);
     input.dispose();
     personFilter.dispose();
     deviceFilter.dispose();
@@ -178,7 +223,10 @@ class _AdminScreenState extends State<AdminScreen> {
         );
       }
     } finally {
-      if (mounted) setState(() => busy = false);
+      if (mounted) {
+        setState(() => busy = false);
+        unawaited(offerIncoming());
+      }
     }
   }
 
@@ -468,12 +516,25 @@ class _AdminScreenState extends State<AdminScreen> {
           ),
           field('Otra clave, si el archivo usa una distinta', secret: true),
           button(
-            'Elegir archivo e importar',
+            incomingPath == null
+                ? 'Elegir archivo e importar'
+                : 'Importar archivo recibido',
             Icons.file_open_outlined,
             () => act(() async {
-              final result = await b!.services.receive(
-                key: input.text.isEmpty ? null : input.text,
-              );
+              final result = incomingPath == null
+                  ? await b!.services.receive(
+                      key: input.text.isEmpty ? null : input.text,
+                    )
+                  : await b!.services.importPath(
+                      incomingPath!,
+                      input.text.isEmpty
+                          ? await b!.services.storage.password()
+                          : input.text,
+                    );
+              if (result != null && incomingPath != null) {
+                await IncomingReports.remove(incomingPath!);
+                incomingPath = null;
+              }
               if (result == null) return;
               date = result.report.date;
               await refresh();
@@ -484,6 +545,17 @@ class _AdminScreenState extends State<AdminScreen> {
             }),
             primary: true,
           ),
+          if (incomingPath != null)
+            button(
+              'Descartar archivo recibido',
+              Icons.close,
+              () => act(() async {
+                await IncomingReports.remove(incomingPath!);
+                incomingPath = null;
+                notice =
+                    'Copia recibida descartada. El archivo original se conserva en la aplicación que lo envió.';
+              }),
+            ),
         ]);
       case 'days':
         final dates = revisions.map((r) => r['date'] as String).toSet().toList()
