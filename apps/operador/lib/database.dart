@@ -30,6 +30,7 @@ Future<CaptureRepository> openRepository() async {
     version: schemaVersion,
     onConfigure: configureDatabase,
     onCreate: createSchema,
+    onUpgrade: upgradeSchema,
   );
   return CaptureRepository(db, deviceId: deviceId);
 }
