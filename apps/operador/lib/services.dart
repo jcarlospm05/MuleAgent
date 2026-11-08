@@ -247,6 +247,7 @@ class OperatorServices {
                   pw.Image(
                     pw.MemoryImage(
                       await file(row['private_path'] as String).readAsBytes(),
+                      dpi: 180,
                     ),
                     height: 175,
                     fit: pw.BoxFit.contain,
