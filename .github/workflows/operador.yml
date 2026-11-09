@@ -11,6 +11,8 @@ concurrency:
   cancel-in-progress: true
 jobs:
   verify:
+    # Refactor checkpoints use the shared verification workflow, without APK builds.
+    if: github.head_ref != 'refactor/mule-unificada'
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v4
@@ -87,4 +89,4 @@ jobs:
             "MuleAgent-Operador-${operator_version}.zip" \
             --prerelease --target "$GITHUB_SHA" \
             --title "MuleAgent Operador ${operator_version} · prueba de campo" \
-            --notes-file docs/operador-v1.0.2.md
+            --notes-file docs/operador-v1.0.3.md

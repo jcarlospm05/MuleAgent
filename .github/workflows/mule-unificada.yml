@@ -1,0 +1,48 @@
+name: MuleAgent modular
+on:
+  push:
+    branches: [refactor/mule-unificada]
+    paths:
+      - 'apps/**'
+      - 'packages/**'
+      - '.github/workflows/**'
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: mule-modular-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  verify:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.47.9'
+          channel: stable
+          cache: true
+      - name: Shared data regression
+        working-directory: packages/mule_data
+        run: |
+          dart pub get
+          dart analyze
+          dart test
+      - name: Administrator data regression
+        working-directory: packages/admin_data
+        run: |
+          dart pub get
+          dart analyze
+          dart test
+      - name: Capture and storage regression
+        working-directory: apps/operador
+        run: |
+          flutter pub get
+          flutter analyze
+          flutter test --timeout=120s
+      - name: Receiver interoperability regression
+        working-directory: apps/administrador
+        run: |
+          flutter pub get
+          flutter analyze
+          flutter test --timeout=120s

@@ -99,7 +99,7 @@ class _OperatorScreenState extends State<OperatorScreen> {
   final input = TextEditingController();
   Future<void> pending = Future.value();
   String screen = 'home';
-  String? error, notice;
+  String? error, notice, publicFolder;
   bool busy = true, closed = false;
   bool reverseMotion = false;
   List<Map<String, Object?>> rows = [], items = [];
@@ -118,7 +118,10 @@ class _OperatorScreenState extends State<OperatorScreen> {
       repo = widget.repository ?? await openRepository();
       services = widget.captureServices;
       if (widget.repository == null) {
-        services = await OperatorServices.create(repo!);
+        services = await OperatorServices.create(
+          repo!,
+          publicStorageEnabled: true,
+        );
         repo!.operatorName = await repo!.setting('operator') ?? '';
         if (!await services!.configured()) {
           screen = 'setupName';
@@ -131,6 +134,17 @@ class _OperatorScreenState extends State<OperatorScreen> {
         }
       }
       session = await repo!.resume();
+      if (services?.publicStorageEnabled == true) {
+        try {
+          final recovered = await services!.recoverPublicReports();
+          if (recovered > 0) {
+            notice = '$recovered cierres guardados en Descargas/MuleAgent.';
+          }
+        } catch (_) {
+          notice =
+              'Falta completar la copia en Descargas. Los datos internos se conservan. Usa Carpeta de reportes para reintentar.';
+        }
+      }
     } catch (_) {
       error =
           'No se pudo abrir el almacenamiento seguro. Tus datos no se borraron. Cierra y vuelve a abrir la app.';
@@ -182,6 +196,9 @@ class _OperatorScreenState extends State<OperatorScreen> {
     draft = closed ? null : await repo!.draft(session!);
     rows = await repo!.tickets(session!);
     input.text = draft?.value ?? '';
+    publicFolder = closed && services?.publicStorageEnabled == true
+        ? await services!.publicFolder(session!)
+        : null;
     screen = closed
         ? 'closed'
         : draft == null
@@ -490,6 +507,12 @@ class _OperatorScreenState extends State<OperatorScreen> {
             ),
           secondary('Jornadas pendientes', () => listSessions(false)),
           secondary('Historial y archivos', () => listSessions(true)),
+          if (services?.publicStorageEnabled == true)
+            secondary(
+              'Carpeta de reportes',
+              () => go('publicReports'),
+              icon: Icons.folder_outlined,
+            ),
           if (services != null && widget.showSettings) ...[
             secondary('Respaldo y restauración', () => go('backup')),
             secondary('Configuración', () {
@@ -498,6 +521,24 @@ class _OperatorScreenState extends State<OperatorScreen> {
               input.text = setupName;
             }),
           ],
+        ]);
+      case 'publicReports':
+        return stack([
+          title('Carpeta de reportes', 'Descargas/MuleAgent'),
+          const Text(
+            'Cada cierre guarda automáticamente su PDF, archivo .mule y fotos originales, por fecha e inicio/salida. Puedes encontrarlos en la aplicación Archivos del teléfono. Se conservan aunque no envíes por WhatsApp.',
+          ),
+          const SizedBox(height: 16),
+          primary(
+            'Guardar o recuperar todos los cierres',
+            () => act(() async {
+              final count = await services!.recoverPublicReports(
+                verifyAll: true,
+              );
+              notice = '$count cierres verificados en Descargas/MuleAgent.';
+            }),
+            icon: Icons.folder_copy_outlined,
+          ),
         ]);
       case 'select':
         return stack([
@@ -558,7 +599,7 @@ class _OperatorScreenState extends State<OperatorScreen> {
         return stack([
           title(
             'Cerrar ${session!.stage.label.toLowerCase()}',
-            '${session!.date} · ${rows.length} fichas. Se conservará esta revisión y se prepararán el PDF y el archivo cifrado.',
+            '${session!.date} · ${rows.length} fichas. Al cerrar se guardan el PDF, el archivo .mule y las fotos originales en Descargas/MuleAgent.',
           ),
           primary(
             'Cerrar y preparar archivos',
@@ -568,8 +609,10 @@ class _OperatorScreenState extends State<OperatorScreen> {
               }
               await repo!.closeRevision(session!);
               await load();
-              await services!.ensureArtifacts(session!);
-              notice = 'Etapa cerrada. Los archivos están listos.';
+              publicFolder = await services!.savePublicReport(session!);
+              notice = publicFolder == null
+                  ? 'Etapa cerrada. Los archivos están listos.'
+                  : 'Cierre guardado automáticamente en $publicFolder';
             }),
           ),
         ]);
@@ -579,7 +622,11 @@ class _OperatorScreenState extends State<OperatorScreen> {
             session!.stage == Stage.entry
                 ? 'Entrada cerrada'
                 : 'Despacho cerrado',
-            '${session!.date} · ${rows.length} fichas. Los archivos de esta revisión se conservan para reenviarlos.',
+            '${session!.date} · ${rows.length} fichas. ${services?.publicStorageEnabled == true
+                ? publicFolder == null
+                      ? 'La copia en Descargas está pendiente. Los originales se conservan dentro de la app.'
+                      : 'PDF, .mule y fotos originales guardados en $publicFolder'
+                : 'Los archivos de esta revisión se conservan para reenviarlos.'}',
           ),
           primary(
             'Compartir por WhatsApp',
@@ -593,6 +640,16 @@ class _OperatorScreenState extends State<OperatorScreen> {
             'Ver e imprimir PDF',
             () => act(() => services!.previewPdf(session!)),
           ),
+          if (services?.publicStorageEnabled == true)
+            secondary(
+              'Guardar copia en Descargas',
+              () => act(() async {
+                publicFolder = await services!.savePublicReport(session!);
+                notice =
+                    'PDF, .mule y fotos originales verificados en $publicFolder';
+              }),
+              icon: Icons.folder_copy_outlined,
+            ),
           secondary(
             'Guardar PDF y archivo cifrado',
             () => act(() => services!.exportArtifacts(session!)),

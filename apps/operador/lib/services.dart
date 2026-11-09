@@ -15,17 +15,14 @@ import 'package:printing/printing.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:uuid/uuid.dart';
 import 'report_filename.dart';
+import 'public_reports.dart';
+import 'package:flutter/services.dart';
+import 'security/package_crypto.dart';
+import 'storage/private_file_store.dart';
+import 'storage/payload_files.dart';
 
-Future<Uint8List> encryptPayload(Map<String, dynamic> args) =>
-    PackageCodec().encode(
-      args['payload'] as Map<String, dynamic>,
-      args['password'] as String,
-    );
-Future<Map<String, dynamic>> decryptPayload(Map<String, dynamic> args) =>
-    PackageCodec().decode(
-      args['bytes'] as Uint8List,
-      args['password'] as String,
-    );
+// Compatibility facade while feature modules are extracted in small steps.
+export 'security/package_crypto.dart' show encryptPayload, decryptPayload;
 
 bool validImage(Uint8List bytes) {
   try {
@@ -36,17 +33,27 @@ bool validImage(Uint8List bytes) {
 }
 
 class OperatorServices {
-  OperatorServices(this.repo, this.root);
+  OperatorServices(this.repo, this.root, {this.publicStorageEnabled = false});
+  final bool publicStorageEnabled;
   final CaptureRepository repo;
   final Directory root;
+  late final _fileStore = PrivateFileStore(root);
+  late final _payloadFiles = PayloadFiles(_fileStore);
   static const storage = FlutterSecureStorage();
   final picker = ImagePicker();
-  static Future<OperatorServices> create(CaptureRepository repo) async {
+  static Future<OperatorServices> create(
+    CaptureRepository repo, {
+    bool publicStorageEnabled = false,
+  }) async {
     final root = Directory(
       p.join((await getApplicationSupportDirectory()).path, 'muleagent'),
     );
     await root.create(recursive: true);
-    return OperatorServices(repo, root);
+    return OperatorServices(
+      repo,
+      root,
+      publicStorageEnabled: publicStorageEnabled,
+    );
   }
 
   Future<bool> configured() async =>
@@ -70,24 +77,10 @@ class OperatorServices {
     return value;
   }
 
-  File file(String relative) {
-    if (relative.isEmpty ||
-        p.isAbsolute(relative) ||
-        relative.contains('\\') ||
-        relative.split('/').any((part) => part == '..' || part.isEmpty) ||
-        !['media', 'artifacts'].contains(relative.split('/').first)) {
-      throw const FormatException('Ruta de archivo inválida.');
-    }
-    return File(p.join(root.path, relative));
-  }
+  File file(String relative) => _fileStore.file(relative);
 
-  Future<void> writeAtomic(String relative, List<int> bytes) async {
-    final target = file(relative);
-    await target.parent.create(recursive: true);
-    final temp = File('${target.path}.${const Uuid().v4()}.tmp');
-    await temp.writeAsBytes(bytes, flush: true);
-    await temp.rename(target.path);
-  }
+  Future<void> writeAtomic(String relative, List<int> bytes) =>
+      _fileStore.writeAtomic(relative, bytes);
 
   Future<void> selectPhoto(Draft draft, ImageSource source) async {
     await repo.setSetting(
@@ -205,6 +198,151 @@ class OperatorServices {
     return record;
   }
 
+  Future<void> preparePublicStorage() async {
+    if (!publicStorageEnabled) return;
+    await PublicReports.prepare();
+  }
+
+  String publicCopyKey(CaptureSession session) =>
+      'public_copy_v1_${session.id}';
+
+  Future<String?> publicFolder(CaptureSession session) async {
+    final value = await repo.setting(publicCopyKey(session));
+    if (value == null || value.isEmpty) return null;
+    try {
+      final saved = jsonDecode(value) as Map<String, dynamic>;
+      return saved['device'] == repo.deviceId
+          ? saved['folder'] as String?
+          : null;
+    } catch (_) {
+      return null;
+    }
+  }
+
+  /// A success marker is written only after every public file is verified.
+  Future<String?> savePublicReport(
+    CaptureSession session, {
+    bool prepared = false,
+  }) async {
+    if (!publicStorageEnabled) {
+      await ensureArtifacts(session);
+      return null;
+    }
+    await repo.setSetting(publicCopyKey(session), '');
+    try {
+      final record = await ensureArtifacts(session);
+      if (!prepared) await preparePublicStorage();
+      final revision = (await repo.db.query(
+        'revisions',
+        where: 'id=?',
+        whereArgs: [session.id],
+      )).single;
+      if (revision['status'] != 'closed') {
+        throw StateError('Primero cierra la etapa.');
+      }
+      final stored = p.basenameWithoutExtension(
+        record['package_path'] as String,
+      );
+      final base =
+          RegExp(
+            r'^(entrada|salida)_\d{4}-\d{2}-\d{2}_\d{2}-\d{2}-\d{2}-\d{3}$',
+          ).hasMatch(stored)
+          ? stored
+          : reportFilenameBase(
+              session.stage,
+              session.date,
+              DateTime.parse(record['created_at'] as String),
+            );
+      final publicBase = base.replaceFirst('entrada_', 'inicio_');
+      final stage = session.stage == Stage.entry ? 'inicio' : 'salida';
+      final directory =
+          'MuleAgent/${session.date}/$stage/${publicBase}_r${revision['number']}_${session.id.substring(0, 8)}';
+      final files = <Map<String, String>>[];
+      Future<void> add(
+        File source,
+        String name,
+        String mime, [
+        String? expected,
+      ]) async {
+        final hash = (await sha256.bind(source.openRead()).first).toString();
+        if (expected != null && hash != expected) {
+          throw StateError('Un original no coincide con su huella.');
+        }
+        files.add({
+          'source': source.path,
+          'name': name,
+          'mime': mime,
+          'sha256': hash,
+        });
+      }
+
+      await add(
+        file(record['pdf_path'] as String),
+        '$publicBase.pdf',
+        'application/pdf',
+        record['pdf_sha256'] as String,
+      );
+      await add(
+        file(record['package_path'] as String),
+        '$base.mule',
+        'application/octet-stream',
+      );
+      for (final row in await repo.tickets(session)) {
+        if (row['evidence_state'] != 'photo') continue;
+        final photo = file(row['private_path'] as String);
+        final code = (row['code'] as String).replaceAll(
+          RegExp(r'[^a-zA-Z0-9_-]'),
+          '_',
+        );
+        final extension = p.extension(photo.path);
+        await add(
+          photo,
+          'foto_${code}_${session.date}_${stage}_${(row['id'] as String).substring(0, 8)}$extension',
+          extension == '.png'
+              ? 'image/png'
+              : extension == '.jpg' || extension == '.jpeg'
+              ? 'image/jpeg'
+              : 'application/octet-stream',
+          row['sha256'] as String,
+        );
+      }
+      final result = await PublicReports.publish(directory, files);
+      await repo.setSetting(
+        publicCopyKey(session),
+        jsonEncode({
+          'device': repo.deviceId,
+          'folder': result['folder'],
+          'count': result['count'],
+          'saved_at': DateTime.now().toUtc().toIso8601String(),
+        }),
+      );
+      return result['folder'] as String;
+    } catch (e) {
+      final detail = e is PlatformException
+          ? e.message
+          : e is StateError
+          ? e.message
+          : 'Comprueba el espacio disponible y los permisos.';
+      throw StateError(
+        'El cierre se conserva dentro de la app, pero falta completar la copia en Descargas. $detail Usa Guardar copia en Descargas para reintentar.',
+      );
+    }
+  }
+
+  /// Also recovers closures interrupted before their PDF or public copy was finished.
+  Future<int> recoverPublicReports({bool verifyAll = false}) async {
+    if (!publicStorageEnabled) return 0;
+    await preparePublicStorage();
+    var count = 0;
+    for (final row in await repo.sessions(closed: true)) {
+      final session = await repo.sessionById(row['id'] as String);
+      if (!verifyAll && await publicFolder(session) != null) continue;
+      await savePublicReport(session, prepared: true);
+      count++;
+    }
+    return count;
+  }
+
   Future<Uint8List> renderPdf(CaptureSession session) async {
     final rows = await repo.tickets(session);
     final revision = (await repo.db.query(
@@ -309,6 +447,7 @@ class OperatorServices {
   }
 
   Future<void> share(CaptureSession session) async {
+    await savePublicReport(session);
     final record = await ensureArtifacts(session);
     final base = reportFilenameBase(
       session.stage,
@@ -339,41 +478,7 @@ class OperatorServices {
   Future<Map<String, dynamic>> includeFiles(
     Map<String, dynamic> snapshot, {
     List<String> extra = const [],
-  }) async {
-    final payload = jsonDecode(jsonEncode(snapshot)) as Map<String, dynamic>;
-    final tables = payload['tables'] as Map<String, dynamic>;
-    final paths = <String>{...extra};
-    for (final e in tables['evidence'] as List<dynamic>) {
-      if (e['state'] == 'photo') paths.add(e['private_path'] as String);
-    }
-    for (final a in tables['artifacts'] as List<dynamic>? ?? []) {
-      paths.add(a['pdf_path'] as String);
-      paths.add(a['package_path'] as String);
-    }
-    var total = 0;
-    final files = <String, dynamic>{};
-    for (final path in paths) {
-      final source = file(path);
-      if (!await source.exists()) {
-        throw StateError(
-          'Falta una foto o archivo original. No se generó un respaldo incompleto.',
-        );
-      }
-      total += await source.length();
-      if (total > 100 * 1024 * 1024) {
-        throw StateError(
-          'El conjunto supera 100 MB de archivos. Conserva los reportes individuales y divide el respaldo antes de continuar.',
-        );
-      }
-      final bytes = await source.readAsBytes();
-      files[path] = {
-        'bytes': base64Encode(bytes),
-        'sha256': sha256.convert(bytes).toString(),
-      };
-    }
-    payload['files'] = files;
-    return payload;
-  }
+  }) => _payloadFiles.includeFiles(snapshot, extra: extra);
 
   Future<bool> backup() async {
     final payload = await includeFiles(await repo.snapshot());
