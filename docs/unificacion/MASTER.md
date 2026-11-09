@@ -89,7 +89,7 @@ Evitar que un módulo de interfaz escriba archivos o que un módulo de almacenam
 ## Entregas y estado
 
 1. **Separación inicial y acuerdos**: extraer rutas/escritura privada, manifiestos de adjuntos y funciones de cifrado; preparar tokens de diseño sin aplicarlos. Verificar recorridos existentes. Estado: completada y verificada localmente (12 pruebas de captura/almacenamiento y 3 de interoperabilidad/interfaz del receptor; ambos análisis sin incidencias).
-2. **Una app y perfiles**: punto de entrada único, capacidades, migraciones y composición de módulos compartidos. Implementación completada y verificada localmente; compilación nativa en CI al publicar el checkpoint. Detalle en ETAPA-2.md.
+2. **Una app y perfiles**: punto de entrada único, capacidades, migraciones y composición de módulos compartidos. Completada: 52 pruebas y compilación Android aprobadas en CI (código 73dc6d1845409913e079999ca059a3cac0bc3ab8). Detalle en ETAPA-2.md.
 3. **Estilo Mule y captura**: temas, componentes, inicio contextual, hora/minutos, teclado y evidencia visible.
 4. **JPG + .mule**: generador de fichas, contratos/migraciones, adjuntos únicos, guardado automático y respaldos sin nuevos PDF del recorrido de captura.
 5. **Administrador simplificado**: recepción múltiple por fecha/etapa, consolidación, exclusión reversible y PDF administrativo; retirar Excel/cruces de las rutas visibles.

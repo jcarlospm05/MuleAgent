@@ -1,6 +1,6 @@
 # Etapa 2 — aplicación única y perfiles
 
-Estado: implementación y pruebas locales completadas; la integración Android se comprueba en el workflow del checkpoint. Base: checkpoint 1, 744f695a720652339a196366bc91120804c9b6a5. Rama refactor/mule-unificada.
+Estado: completada, con 52 pruebas, análisis y compilación Android aprobados en CI. Base: checkpoint 1, 744f695a720652339a196366bc91120804c9b6a5. Rama refactor/mule-unificada.
 
 ## Estructura
 
@@ -45,3 +45,12 @@ No aplica todavía Estilo Mule a las pantallas, no sustituye el logo, no cambia 
 ## Verificación requerida
 
 Política de perfiles y errores de almacenamiento; elección inicial/reinicio; alternancia de Administrador y conservación de borrador; bloqueo directo de recepción; migración de esquema con datos; importación combinada de respaldo administrativo, reimportación y conflicto; rechazo de escalada por respaldo; regresión de ambas apps previas y compilación nativa del punto de entrada único.
+
+
+## Cierre y reanudación
+
+Código verificado: 73dc6d1845409913e079999ca059a3cac0bc3ab8.
+Ejecución aprobada: https://github.com/jcarlospm05/MuleAgent/actions/runs/42649490843
+52 pruebas: perfiles 6, núcleo 12, repositorio administrativo 11, captura/archivos 12, receptor previo 3 y aplicación unificada 8. El build Android único terminó correctamente. No se publicó una APK de actualización de campo.
+
+Siguiente: etapa 3, Estilo Mule y captura, manteniendo el mismo punto de entrada y la política de perfiles. Usar la paleta y referencia ya aprobadas; no rediseñarlas. La instalación/actualización física, cámara, selectores y WhatsApp se verificarán en la entrega final.
