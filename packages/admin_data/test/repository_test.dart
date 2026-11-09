@@ -197,4 +197,84 @@ void main() {
       }
     },
   );
+  test(
+    'feature schema is idempotent on existing archives and retains received rows',
+    () async {
+      await receive(packet());
+      await ensureAdminSchema(db);
+      await ensureAdminSchema(db);
+      expect(await repo.tickets('2026-11-07'), hasLength(1));
+      expect(await db.query('mule_feature_versions'), hasLength(1));
+    },
+  );
+  test(
+    'feature schema upgrades a capture database without losing a draft',
+    () async {
+      final base = await databaseFactoryFfi.openDatabase(
+        inMemoryDatabasePath,
+        options: OpenDatabaseOptions(
+          singleInstance: false,
+          version: schemaVersion,
+          onConfigure: configureDatabase,
+          onCreate: createSchema,
+        ),
+      );
+      try {
+        final capture = CaptureRepository(base, deviceId: 'old-operator');
+        final draft = await capture.start(Stage.entry, '2026-11-09');
+        await capture.addTicket(draft);
+        await ensureAdminSchema(base);
+        await ensureAdminSchema(base);
+        expect((await capture.resume())!.id, draft.id);
+        expect(await base.query('tickets'), hasLength(1));
+        expect(await base.query('admin_revisions'), isEmpty);
+      } finally {
+        await base.close();
+      }
+    },
+  );
+  test(
+    'merge restores administrator archives alongside capture data and re-import is idempotent',
+    () async {
+      await receive(packet());
+      final backup = await repo.backup();
+      final target = await databaseFactoryFfi.openDatabase(
+        inMemoryDatabasePath,
+        options: OpenDatabaseOptions(
+          singleInstance: false,
+          version: schemaVersion,
+          onConfigure: configureDatabase,
+          onCreate: createSchema,
+        ),
+      );
+      try {
+        final capture = CaptureRepository(target, deviceId: 'local');
+        final draft = await capture.start(Stage.exit, '2026-11-09');
+        await capture.addTicket(draft);
+        await ensureAdminSchema(target);
+        final restored = AdminRepository(
+          target,
+          device: 'local',
+          actor: 'Julio',
+        );
+        await restored.restoreBackup(backup, merge: true);
+        await restored.restoreBackup(backup, merge: true);
+        expect(await restored.tickets('2026-11-07'), hasLength(1));
+        expect((await capture.resume())!.id, draft.id);
+        expect(await target.query('received_events'), hasLength(1));
+        final altered = jsonDecode(jsonEncode(backup)) as Map<String, dynamic>;
+        altered['admin_revisions'][0]['fingerprint'] = 'changed';
+        await expectLater(
+          restored.restoreBackup(altered, merge: true),
+          throwsStateError,
+        );
+        expect(
+          (await target.query('admin_revisions')).single['fingerprint'],
+          (backup['admin_revisions'] as List).single['fingerprint'],
+        );
+      } finally {
+        await target.close();
+      }
+    },
+  );
 }

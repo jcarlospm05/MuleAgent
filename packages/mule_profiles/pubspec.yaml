@@ -1,0 +1,9 @@
+name: mule_profiles
+description: Perfiles y capacidades de una instalación MuleAgent.
+publish_to: none
+version: 0.1.0
+environment:
+  sdk: '>=3.10.0 <4.0.0'
+dev_dependencies:
+  test: ^1.26.3
+  lints: ^6.0.0

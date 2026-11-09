@@ -22,6 +22,16 @@ jobs:
           flutter-version: '3.47.9'
           channel: stable
           cache: true
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - name: Profile capability rules
+        working-directory: packages/mule_profiles
+        run: |
+          dart pub get
+          dart analyze
+          dart test
       - name: Shared data regression
         working-directory: packages/mule_data
         run: |
@@ -46,3 +56,21 @@ jobs:
           flutter pub get
           flutter analyze
           flutter test --timeout=120s
+      - name: Unified application and migration tests
+        working-directory: apps/muleagent
+        run: |
+          flutter pub get
+          flutter analyze
+          flutter test --timeout=120s
+      - name: Compile the single Android entry point
+        working-directory: apps/muleagent
+        run: |
+          set -o pipefail
+          flutter build apk --debug 2>&1 | tee build-check.log
+      - name: Retain native compile diagnostics on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: mule-stage2-build-log
+          path: apps/muleagent/build-check.log
+          if-no-files-found: ignore

@@ -5,7 +5,7 @@ import 'package:uuid/uuid.dart';
 
 import 'payload.dart';
 
-Future<void> createAdminSchema(Database db) async {
+Future<void> createAdminSchema(DatabaseExecutor db) async {
   for (final sql in [
     '''CREATE TABLE admin_revisions(id TEXT PRIMARY KEY,report_id TEXT NOT NULL,number INTEGER NOT NULL,date TEXT NOT NULL,stage TEXT NOT NULL CHECK(stage IN ('entry','exit')),device TEXT NOT NULL,source TEXT NOT NULL CHECK(source IN ('received','own')),fingerprint TEXT NOT NULL,snapshot TEXT NOT NULL,pdf_path TEXT NOT NULL,package_path TEXT,received_at TEXT NOT NULL,UNIQUE(report_id,number))''',
     'CREATE INDEX admin_dates ON admin_revisions(date,stage,report_id,number)',
@@ -28,6 +28,38 @@ Future<void> createAdminSchema(Database db) async {
     await db.execute(sql);
   }
 }
+
+/// Adds feature tables to an existing capture database without changing its rows.
+Future<void> ensureAdminSchema(Database db) => db.transaction((tx) async {
+  await tx.execute(
+    'CREATE TABLE IF NOT EXISTS mule_feature_versions(name TEXT PRIMARY KEY, version INTEGER NOT NULL)',
+  );
+  final version = await tx.query(
+    'mule_feature_versions',
+    where: 'name=?',
+    whereArgs: ['administration'],
+  );
+  if (version.isNotEmpty) {
+    if (version.single['version'] != 1) {
+      throw StateError('Versión administrativa incompatible.');
+    }
+    return;
+  }
+  final tables = await tx.rawQuery(
+    "SELECT name FROM sqlite_master WHERE type='table' AND name IN ('admin_revisions','admin_files','received_events','admin_events','admin_links')",
+  );
+  if (tables.isEmpty) {
+    await createAdminSchema(tx);
+  } else if (tables.length != 5) {
+    throw StateError(
+      'El esquema administrativo está incompleto. No se modificaron los datos.',
+    );
+  }
+  await tx.insert('mule_feature_versions', {
+    'name': 'administration',
+    'version': 1,
+  });
+});
 
 class ImportResult {
   const ImportResult(this.duplicate, this.newEvents);
@@ -367,23 +399,55 @@ class AdminRepository {
   Future<Map<String, dynamic>> backup() => db.transaction((tx) async {
     return {for (final table in backupTables) table: await tx.query(table)};
   });
-  Future<void> restoreBackup(Map<String, dynamic> tables) => db.transaction((
-    tx,
-  ) async {
+  Future<void> restoreBackup(
+    Map<String, dynamic> tables, {
+    bool merge = false,
+  }) => db.transaction((tx) async {
     if (tables.length != backupTables.length ||
         !backupTables.every(tables.containsKey)) {
       throw const FormatException('Respaldo administrativo incompatible.');
     }
-    for (final table in ['reports', 'admin_revisions', 'admin_links']) {
-      if ((await tx.query(table, limit: 1)).isNotEmpty) {
-        throw StateError(
-          'Restaura el respaldo en una instalación sin jornadas. Los datos actuales se conservaron.',
-        );
+    if (!merge) {
+      for (final table in ['reports', 'admin_revisions', 'admin_links']) {
+        if ((await tx.query(table, limit: 1)).isNotEmpty) {
+          throw StateError(
+            'Restaura el respaldo en una instalación sin jornadas. Los datos actuales se conservaron.',
+          );
+        }
       }
     }
+    Future<List<Map<String, Object?>>> existingRow(
+      String table,
+      Map<String, Object?> row,
+    ) {
+      final keys = table == 'admin_files'
+          ? ['revision_id', 'original_path']
+          : table == 'artifacts'
+          ? ['revision_id']
+          : ['id'];
+      return tx.query(
+        table,
+        where: keys.map((k) => '$k=?').join(' AND '),
+        whereArgs: keys.map((k) => row[k]).toList(),
+      );
+    }
+
+    Future<void> insertChecked(String table, Map<String, Object?> row) async {
+      final existing = await existingRow(table, row);
+      if (existing.isNotEmpty) {
+        if (!merge || canonical(existing.single) != canonical(row)) {
+          throw StateError(
+            'El respaldo contiene un registro diferente. Se conservaron los datos actuales.',
+          );
+        }
+        return;
+      }
+      await tx.insert(table, row);
+    }
+
     Future<void> insertRows(String table, Iterable<dynamic> rows) async {
       for (final raw in rows) {
-        await tx.insert(table, Map<String, Object?>.from(raw as Map));
+        await insertChecked(table, Map<String, Object?>.from(raw as Map));
       }
     }
 
@@ -391,35 +455,46 @@ class AdminRepository {
     final seenTickets = <String>{}, seenEvidence = <String>{};
     for (final raw in tables['revisions'] as List) {
       final revision = Map<String, Object?>.from(raw as Map);
-      await tx.insert('revisions', {
-        ...revision,
-        'status': 'draft',
-        'closed_at': null,
-        'current_ticket_id': null,
-      });
+      final existing = await existingRow('revisions', revision);
+      if (existing.isNotEmpty &&
+          (!merge || canonical(existing.single) != canonical(revision))) {
+        throw StateError(
+          'Conflicto de revisión. Se conservaron los datos actuales.',
+        );
+      }
+      if (existing.isEmpty) {
+        await tx.insert('revisions', {
+          ...revision,
+          'status': 'draft',
+          'closed_at': null,
+          'current_ticket_id': null,
+        });
+      }
       for (final t in (tables['tickets'] as List).where(
         (t) => t['revision_id'] == revision['id'],
       )) {
         if (!seenTickets.add(t['id'] as String)) {
           throw const FormatException('Ficha duplicada en el respaldo.');
         }
-        await tx.insert('tickets', Map<String, Object?>.from(t as Map));
+        await insertChecked('tickets', Map<String, Object?>.from(t as Map));
         for (final e in (tables['evidence'] as List).where(
           (e) => e['ticket_id'] == t['id'],
         )) {
           if (!seenEvidence.add(e['id'] as String)) {
             throw const FormatException('Evidencia duplicada.');
           }
-          await tx.insert('evidence', Map<String, Object?>.from(e as Map));
+          await insertChecked('evidence', Map<String, Object?>.from(e as Map));
         }
       }
       final restored = {...revision}..remove('id');
-      await tx.update(
-        'revisions',
-        restored,
-        where: 'id=?',
-        whereArgs: [revision['id']],
-      );
+      if (existing.isEmpty) {
+        await tx.update(
+          'revisions',
+          restored,
+          where: 'id=?',
+          whereArgs: [revision['id']],
+        );
+      }
     }
     if (seenTickets.length != (tables['tickets'] as List).length ||
         seenEvidence.length != (tables['evidence'] as List).length) {

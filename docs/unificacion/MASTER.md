@@ -89,7 +89,7 @@ Evitar que un módulo de interfaz escriba archivos o que un módulo de almacenam
 ## Entregas y estado
 
 1. **Separación inicial y acuerdos**: extraer rutas/escritura privada, manifiestos de adjuntos y funciones de cifrado; preparar tokens de diseño sin aplicarlos. Verificar recorridos existentes. Estado: completada y verificada localmente (12 pruebas de captura/almacenamiento y 3 de interoperabilidad/interfaz del receptor; ambos análisis sin incidencias).
-2. **Una app y perfiles**: punto de entrada único, capacidades, migraciones y composición de módulos compartidos. No borrar la vía de migración desde Administrador existente.
+2. **Una app y perfiles**: punto de entrada único, capacidades, migraciones y composición de módulos compartidos. Implementación completada y verificada localmente; compilación nativa en CI al publicar el checkpoint. Detalle en ETAPA-2.md.
 3. **Estilo Mule y captura**: temas, componentes, inicio contextual, hora/minutos, teclado y evidencia visible.
 4. **JPG + .mule**: generador de fichas, contratos/migraciones, adjuntos únicos, guardado automático y respaldos sin nuevos PDF del recorrido de captura.
 5. **Administrador simplificado**: recepción múltiple por fecha/etapa, consolidación, exclusión reversible y PDF administrativo; retirar Excel/cruces de las rutas visibles.
@@ -99,7 +99,7 @@ Cada etapa tendrá su propio cambio y resumen. Una etapa técnica aprobada no eq
 
 ## Próximo punto de reanudación
 
-Al terminar la etapa 1: usar su commit como base, comenzar etapa 2 y leer ambos documentos antes de editar. No reabrir decisiones ya aprobadas. Resolver elecciones técnicas ordinarias sin pedir confirmaciones de nuevo.
+Al terminar la etapa 2: usar su commit como base y comenzar la etapa 3 leyendo MASTER.md, ESTILO-MULE.md y ETAPA-2.md antes de editar. No reabrir decisiones ya aprobadas. Resolver elecciones técnicas ordinarias sin pedir confirmaciones de nuevo.
 
 
 ## Checkpoint 1: estructura real
@@ -112,4 +112,13 @@ Al terminar la etapa 1: usar su commit como base, comenzar etapa 2 y leer ambos 
 - .github/workflows/mule-unificada.yml verifica ambos recorridos y sus paquetes de datos, sin generar/publicar APK en cada checkpoint interno. Las compilaciones antiguas se omiten para el PR de esta rama.
 - Rama de trabajo: refactor/mule-unificada. Base de integración: Administrador 1.0.1 + guardado automático del Operador 1.0.3. Las ramas distribuidas se conservan.
 
-Pendiente al reanudar: etapa 2. No presentar estos cambios internos como la nueva interfaz o como la APK unificada terminada.
+Checkpoint 1 conservado. La etapa 2 continúa su base; no presentar los cambios internos como la nueva interfaz o como la APK final terminada.
+
+
+## Checkpoint 2: unificación y perfiles
+
+Implementación de la etapa 2 en apps/muleagent; detalle de capacidades y migración en ETAPA-2.md. La elección inicial se guarda fuera de SQLite y de respaldos. Las dos funciones nativas están centralizadas en packages/mule_android. El único build nuevo es apps/muleagent; las apps anteriores quedan como módulos/compatibilidad, sin duplicar captura por rol.
+
+Verificación local: 6 pruebas de perfiles, 11 del repositorio administrativo, 12 del recorrido de captura/archivos anterior, 3 del receptor anterior y 8 de la app unificada (navegación, acceso y migración). El workflow conserva también las 12 pruebas del núcleo de datos y agrega compilación Android del punto de entrada nuevo.
+
+Siguiente etapa: 3 — aplicar Estilo Mule, claro/oscuro, logo, inicio contextual y las mejoras de captura. No adelantar la generación de JPG ni la consolidación administrativa antes de sus etapas respectivas.

@@ -1,5 +1,6 @@
 package com.muleagent.operador
 
+import com.muleagent.platform.PublicReports
 import io.flutter.embedding.android.FlutterActivity
 import io.flutter.embedding.engine.FlutterEngine
 

@@ -511,6 +511,10 @@ class OperatorServices {
       'bytes': await source.readAsBytes(),
       'password': key,
     });
+    return restorePayload(payload);
+  }
+
+  Future<bool> restorePayload(Map<String, dynamic> payload) async {
     if (payload['kind'] != 'backup') {
       throw const FormatException(
         'Selecciona un respaldo completo, no un reporte diario.',

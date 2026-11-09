@@ -1,4 +1,4 @@
-package com.muleagent.operador
+package com.muleagent.platform
 
 import android.Manifest
 import android.app.Activity
