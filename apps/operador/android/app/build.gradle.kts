@@ -5,6 +5,7 @@ plugins {
 }
 
 android {
+    sourceSets.getByName("main").java.srcDir(rootProject.projectDir.resolve("../../../packages/mule_android/src/main/kotlin"))
     namespace = "com.muleagent.operador"
     compileSdk = flutter.compileSdkVersion
     ndkVersion = flutter.ndkVersion

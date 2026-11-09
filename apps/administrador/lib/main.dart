@@ -4,6 +4,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'incoming.dart';
 import 'package:mule_data/mule_data.dart';
+import 'package:mule_profiles/mule_profiles.dart';
+import 'package:operador/security/profile_store.dart';
 import 'package:operador/brand.dart';
 import 'package:operador/main.dart';
 import 'package:operador/services.dart';
@@ -29,7 +31,15 @@ class AdminBundle {
       actor: capture.operatorName,
     );
     final storage = await OperatorServices.create(capture);
-    return AdminBundle(capture, repo, AdminServices(repo, capture, storage));
+    final access = ProfileRepository(SecureProfileStorage());
+    if (await access.load() == null) {
+      await access.configure(AppRole.administrator);
+    }
+    return AdminBundle(
+      capture,
+      repo,
+      AdminServices(repo, capture, storage, access: access),
+    );
   }
 }
 

@@ -10,9 +10,16 @@ import 'package:administrador/incoming.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:image/image.dart' as image;
 import 'package:mule_data/mule_data.dart';
+import 'package:mule_profiles/mule_profiles.dart';
 import 'package:operador/services.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
+
+class TestAdminAccess implements AdministrativeAccess {
+  const TestAdminAccess();
+  @override
+  Future<void> requireAdministrator() async {}
+}
 
 class LocalServices extends OperatorServices {
   LocalServices(super.repo, super.root);
@@ -58,7 +65,12 @@ void main() {
           actor: 'Carlos',
         );
         final storage = LocalServices(own, targetDir),
-            service = AdminServices(repo, own, LocalServices(own, targetDir));
+            service = AdminServices(
+              repo,
+              own,
+              LocalServices(own, targetDir),
+              access: const TestAdminAccess(),
+            );
         final session = await origin.start(Stage.entry, '2026-11-07');
         await origin.addTicket(session);
         const values = ['Julio', '000362', '=1+1', '07:04', '111410.7'];
@@ -146,6 +158,7 @@ void main() {
             restoredRepo,
             restoredCapture,
             LocalServices(restoredCapture, restoredDir),
+            access: const TestAdminAccess(),
           );
           await restoredService.restorePayload(backup);
           final restoredRows = await restoredRepo.tickets('2026-11-07');
@@ -189,6 +202,7 @@ void main() {
         repo,
         capture,
         LocalServices(capture, dir),
+        access: const TestAdminAccess(),
       );
       await tester.pumpWidget(
         AdministratorApp(bundle: AdminBundle(capture, repo, services)),
@@ -287,7 +301,12 @@ void main() {
           bundle: AdminBundle(
             capture,
             repo,
-            AdminServices(repo, capture, LocalServices(capture, dir)),
+            AdminServices(
+              repo,
+              capture,
+              LocalServices(capture, dir),
+              access: const TestAdminAccess(),
+            ),
           ),
         ),
       );

@@ -31,3 +31,8 @@ Flutter 3.47.9, JDK 17 y Android SDK. GitHub Actions analiza, prueba y compila; 
 - [Plan maestro v2](https://docs.google.com/document/d/19a6wKi1g6V3FK0fXGAqGsATZPMZln6YXK2bkbEARnmE/edit)
 
 El plan v2 actualiza el intercambio a un paquete cifrado versionado y conserva los PDF exactos en el respaldo. El prototipo HTML es una referencia visual con datos de muestra.
+
+
+## Aplicación unificada en desarrollo
+
+El nuevo punto de entrada es apps/muleagent. Ver docs/unificacion/MASTER.md para acuerdos y etapas, docs/unificacion/ESTILO-MULE.md para el diseño aprobado y docs/unificacion/ETAPA-2.md para perfiles y migración. La rama de trabajo es refactor/mule-unificada. Las apps anteriores permanecen como módulos de compatibilidad; la nueva entrega será una sola APK.

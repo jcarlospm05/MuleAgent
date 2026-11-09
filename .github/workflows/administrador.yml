@@ -12,6 +12,8 @@ concurrency:
   cancel-in-progress: true
 jobs:
   verify:
+    # Refactor checkpoints use the shared verification workflow, without APK builds.
+    if: github.head_ref != 'refactor/mule-unificada'
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v4

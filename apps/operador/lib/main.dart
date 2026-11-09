@@ -6,6 +6,7 @@ import 'database.dart';
 import 'services.dart';
 import 'motion.dart';
 import 'brand.dart';
+import 'design/legacy_theme.dart';
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
@@ -19,56 +20,7 @@ class OperatorApp extends StatelessWidget {
   Widget build(BuildContext context) => MaterialApp(
     title: 'MuleAgent · Operador',
     debugShowCheckedModeBanner: false,
-    theme: ThemeData(
-      useMaterial3: true,
-      scaffoldBackgroundColor: const Color(0xFFFFFDF8),
-      colorScheme: ColorScheme.fromSeed(
-        seedColor: const Color(0xFF21355E),
-        primary: const Color(0xFF21355E),
-        surface: const Color(0xFFFFFDF8),
-      ),
-      textTheme: const TextTheme(
-        headlineMedium: TextStyle(
-          fontSize: 32,
-          fontWeight: FontWeight.w800,
-          color: Color(0xFF182237),
-        ),
-        bodyMedium: TextStyle(fontSize: 18),
-      ),
-      inputDecorationTheme: InputDecorationTheme(
-        filled: true,
-        fillColor: Colors.white,
-        border: OutlineInputBorder(borderRadius: BorderRadius.circular(18)),
-      ),
-      outlinedButtonTheme: OutlinedButtonThemeData(
-        style: OutlinedButton.styleFrom(
-          minimumSize: const Size(48, 64),
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-          textStyle: const TextStyle(
-            fontFamily: 'Roboto',
-            fontSize: 18,
-            fontWeight: FontWeight.w600,
-          ),
-          side: const BorderSide(color: Color(0xFFCDD6E5), width: 1.5),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(16),
-          ),
-        ),
-      ),
-      filledButtonTheme: FilledButtonThemeData(
-        style: FilledButton.styleFrom(
-          minimumSize: const Size(double.infinity, 80),
-          textStyle: const TextStyle(
-            fontFamily: 'Roboto',
-            fontSize: 22,
-            fontWeight: FontWeight.bold,
-          ),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(18),
-          ),
-        ),
-      ),
-    ),
+    theme: legacyCaptureTheme(),
     home: OperatorScreen(repository: repository),
   );
 }
@@ -81,12 +33,16 @@ class OperatorScreen extends StatefulWidget {
     this.roleLabel = 'Operador',
     this.showSettings = true,
     this.onExit,
+    this.homeActions,
+    this.onConfigured,
   });
   final CaptureRepository? repository;
   final OperatorServices? captureServices;
   final String roleLabel;
   final bool showSettings;
   final VoidCallback? onExit;
+  final List<Widget> Function(BuildContext)? homeActions;
+  final VoidCallback? onConfigured;
   @override
   State<OperatorScreen> createState() => _OperatorScreenState();
 }
@@ -99,7 +55,7 @@ class _OperatorScreenState extends State<OperatorScreen> {
   final input = TextEditingController();
   Future<void> pending = Future.value();
   String screen = 'home';
-  String? error, notice;
+  String? error, notice, publicFolder;
   bool busy = true, closed = false;
   bool reverseMotion = false;
   List<Map<String, Object?>> rows = [], items = [];
@@ -118,7 +74,10 @@ class _OperatorScreenState extends State<OperatorScreen> {
       repo = widget.repository ?? await openRepository();
       services = widget.captureServices;
       if (widget.repository == null) {
-        services = await OperatorServices.create(repo!);
+        services = await OperatorServices.create(
+          repo!,
+          publicStorageEnabled: true,
+        );
         repo!.operatorName = await repo!.setting('operator') ?? '';
         if (!await services!.configured()) {
           screen = 'setupName';
@@ -130,7 +89,21 @@ class _OperatorScreenState extends State<OperatorScreen> {
               'No se recuperó una foto pendiente. Puedes volver a tomarla.';
         }
       }
+      if (services != null && !await services!.configured()) {
+        screen = 'setupName';
+      }
       session = await repo!.resume();
+      if (services?.publicStorageEnabled == true) {
+        try {
+          final recovered = await services!.recoverPublicReports();
+          if (recovered > 0) {
+            notice = '$recovered cierres guardados en Descargas/MuleAgent.';
+          }
+        } catch (_) {
+          notice =
+              'Falta completar la copia en Descargas. Los datos internos se conservan. Usa Carpeta de reportes para reintentar.';
+        }
+      }
     } catch (_) {
       error =
           'No se pudo abrir el almacenamiento seguro. Tus datos no se borraron. Cierra y vuelve a abrir la app.';
@@ -182,6 +155,9 @@ class _OperatorScreenState extends State<OperatorScreen> {
     draft = closed ? null : await repo!.draft(session!);
     rows = await repo!.tickets(session!);
     input.text = draft?.value ?? '';
+    publicFolder = closed && services?.publicStorageEnabled == true
+        ? await services!.publicFolder(session!)
+        : null;
     screen = closed
         ? 'closed'
         : draft == null
@@ -407,7 +383,11 @@ class _OperatorScreenState extends State<OperatorScreen> {
             '¿Quién registra?',
             'Escribe tu nombre para identificar los registros de este celular.',
           ),
-          field(label: 'Nombre del operador'),
+          field(
+            label: widget.roleLabel == 'Operador'
+                ? 'Nombre del operador'
+                : 'Nombre de quien registra',
+          ),
           const SizedBox(height: 24),
           primary('Siguiente', () {
             if (input.text.trim().isEmpty || input.text.length > 100) {
@@ -454,6 +434,7 @@ class _OperatorScreenState extends State<OperatorScreen> {
                 );
               }
               await services!.configure(setupName, setupKey);
+              widget.onConfigured?.call();
               setupKey = '';
               input.clear();
               screen = 'home';
@@ -488,8 +469,15 @@ class _OperatorScreenState extends State<OperatorScreen> {
               widget.onExit!,
               icon: Icons.home_outlined,
             ),
+          ...?widget.homeActions?.call(context),
           secondary('Jornadas pendientes', () => listSessions(false)),
           secondary('Historial y archivos', () => listSessions(true)),
+          if (services?.publicStorageEnabled == true)
+            secondary(
+              'Carpeta de reportes',
+              () => go('publicReports'),
+              icon: Icons.folder_outlined,
+            ),
           if (services != null && widget.showSettings) ...[
             secondary('Respaldo y restauración', () => go('backup')),
             secondary('Configuración', () {
@@ -498,6 +486,24 @@ class _OperatorScreenState extends State<OperatorScreen> {
               input.text = setupName;
             }),
           ],
+        ]);
+      case 'publicReports':
+        return stack([
+          title('Carpeta de reportes', 'Descargas/MuleAgent'),
+          const Text(
+            'Cada cierre guarda automáticamente su PDF, archivo .mule y fotos originales, por fecha e inicio/salida. Puedes encontrarlos en la aplicación Archivos del teléfono. Se conservan aunque no envíes por WhatsApp.',
+          ),
+          const SizedBox(height: 16),
+          primary(
+            'Guardar o recuperar todos los cierres',
+            () => act(() async {
+              final count = await services!.recoverPublicReports(
+                verifyAll: true,
+              );
+              notice = '$count cierres verificados en Descargas/MuleAgent.';
+            }),
+            icon: Icons.folder_copy_outlined,
+          ),
         ]);
       case 'select':
         return stack([
@@ -558,7 +564,7 @@ class _OperatorScreenState extends State<OperatorScreen> {
         return stack([
           title(
             'Cerrar ${session!.stage.label.toLowerCase()}',
-            '${session!.date} · ${rows.length} fichas. Se conservará esta revisión y se prepararán el PDF y el archivo cifrado.',
+            '${session!.date} · ${rows.length} fichas. Al cerrar se guardan el PDF, el archivo .mule y las fotos originales en Descargas/MuleAgent.',
           ),
           primary(
             'Cerrar y preparar archivos',
@@ -568,8 +574,10 @@ class _OperatorScreenState extends State<OperatorScreen> {
               }
               await repo!.closeRevision(session!);
               await load();
-              await services!.ensureArtifacts(session!);
-              notice = 'Etapa cerrada. Los archivos están listos.';
+              publicFolder = await services!.savePublicReport(session!);
+              notice = publicFolder == null
+                  ? 'Etapa cerrada. Los archivos están listos.'
+                  : 'Cierre guardado automáticamente en $publicFolder';
             }),
           ),
         ]);
@@ -579,7 +587,11 @@ class _OperatorScreenState extends State<OperatorScreen> {
             session!.stage == Stage.entry
                 ? 'Entrada cerrada'
                 : 'Despacho cerrado',
-            '${session!.date} · ${rows.length} fichas. Los archivos de esta revisión se conservan para reenviarlos.',
+            '${session!.date} · ${rows.length} fichas. ${services?.publicStorageEnabled == true
+                ? publicFolder == null
+                      ? 'La copia en Descargas está pendiente. Los originales se conservan dentro de la app.'
+                      : 'PDF, .mule y fotos originales guardados en $publicFolder'
+                : 'Los archivos de esta revisión se conservan para reenviarlos.'}',
           ),
           primary(
             'Compartir por WhatsApp',
@@ -593,6 +605,16 @@ class _OperatorScreenState extends State<OperatorScreen> {
             'Ver e imprimir PDF',
             () => act(() => services!.previewPdf(session!)),
           ),
+          if (services?.publicStorageEnabled == true)
+            secondary(
+              'Guardar copia en Descargas',
+              () => act(() async {
+                publicFolder = await services!.savePublicReport(session!);
+                notice =
+                    'PDF, .mule y fotos originales verificados en $publicFolder';
+              }),
+              icon: Icons.folder_copy_outlined,
+            ),
           secondary(
             'Guardar PDF y archivo cifrado',
             () => act(() => services!.exportArtifacts(session!)),

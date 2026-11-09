@@ -1,0 +1,29 @@
+name: muleagent
+description: Aplicación unificada MuleAgent con perfiles Supervisor y Administrador.
+publish_to: none
+version: 1.1.0+6
+environment:
+  sdk: '>=3.10.0 <4.0.0'
+dependencies:
+  flutter:
+    sdk: flutter
+  operador:
+    path: ../operador
+  administrador:
+    path: ../administrador
+  mule_data:
+    path: ../../packages/mule_data
+  admin_data:
+    path: ../../packages/admin_data
+  mule_profiles:
+    path: ../../packages/mule_profiles
+  file_picker: ^10.3.10
+  flutter_secure_storage: ^9.2.4
+  path_provider: ^2.1.5
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^6.0.0
+  sqflite_common_ffi: ^2.3.6
+flutter:
+  uses-material-design: true

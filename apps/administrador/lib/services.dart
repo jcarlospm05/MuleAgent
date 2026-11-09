@@ -6,6 +6,7 @@ import 'package:file_picker/file_picker.dart';
 import 'package:flutter/foundation.dart';
 import 'package:image/image.dart' as image;
 import 'package:mule_data/mule_data.dart';
+import 'package:mule_profiles/mule_profiles.dart';
 import 'package:operador/services.dart';
 import 'package:path/path.dart' as p;
 import 'package:pdf/pdf.dart';
@@ -23,7 +24,8 @@ class Receipt {
 }
 
 class AdminServices {
-  AdminServices(this.repo, this.capture, this.storage);
+  AdminServices(this.repo, this.capture, this.storage, {required this.access});
+  final AdministrativeAccess access;
   final AdminRepository repo;
   final CaptureRepository capture;
   final OperatorServices storage;
@@ -42,6 +44,7 @@ class AdminServices {
   }
 
   Future<Receipt?> receive({String? key}) async {
+    await access.requireAdministrator();
     final selected = await FilePicker.platform.pickFiles(type: FileType.any);
     if (selected == null) return null;
     final path = selected.files.single.path;
@@ -50,6 +53,7 @@ class AdminServices {
   }
 
   Future<Receipt> importPath(String path, String key) async {
+    await access.requireAdministrator();
     final file = File(path);
     if (await file.length() > PackageCodec.maxBytes * 2) {
       throw StateError('Archivo demasiado grande.');
@@ -58,6 +62,7 @@ class AdminServices {
   }
 
   Future<Receipt> importBytes(Uint8List bytes, String key) async {
+    await access.requireAdministrator();
     final payload = await compute(decryptPayload, {
       'bytes': bytes,
       'password': key,
@@ -71,6 +76,7 @@ class AdminServices {
     required String source,
     Uint8List? package,
   }) async {
+    await access.requireAdministrator();
     final paths = <String, String>{}, created = <File>[];
     try {
       for (final entry in report.files.entries) {
@@ -535,7 +541,11 @@ class AdminServices {
     return restorePayload(payload);
   }
 
-  Future<bool> restorePayload(Map<String, dynamic> payload) async {
+  Future<bool> restorePayload(
+    Map<String, dynamic> payload, {
+    bool merge = false,
+  }) async {
+    await access.requireAdministrator();
     if (payload['kind'] != 'backup' ||
         payload['app'] != 'administrator' ||
         payload['schema'] != 1) {
@@ -584,7 +594,7 @@ class AdminServices {
         require(r['pdf_path']);
         if (r['package_path'] != null) require(r['package_path']);
       }
-      await repo.restoreBackup(tables);
+      await repo.restoreBackup(tables, merge: merge);
       return true;
     } catch (_) {
       for (final file in created) {

@@ -1,0 +1,76 @@
+name: MuleAgent modular
+on:
+  push:
+    branches: [refactor/mule-unificada]
+    paths:
+      - 'apps/**'
+      - 'packages/**'
+      - '.github/workflows/**'
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: mule-modular-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  verify:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.47.9'
+          channel: stable
+          cache: true
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - name: Profile capability rules
+        working-directory: packages/mule_profiles
+        run: |
+          dart pub get
+          dart analyze
+          dart test
+      - name: Shared data regression
+        working-directory: packages/mule_data
+        run: |
+          dart pub get
+          dart analyze
+          dart test
+      - name: Administrator data regression
+        working-directory: packages/admin_data
+        run: |
+          dart pub get
+          dart analyze
+          dart test
+      - name: Capture and storage regression
+        working-directory: apps/operador
+        run: |
+          flutter pub get
+          flutter analyze
+          flutter test --timeout=120s
+      - name: Receiver interoperability regression
+        working-directory: apps/administrador
+        run: |
+          flutter pub get
+          flutter analyze
+          flutter test --timeout=120s
+      - name: Unified application and migration tests
+        working-directory: apps/muleagent
+        run: |
+          flutter pub get
+          flutter analyze
+          flutter test --timeout=120s
+      - name: Compile the single Android entry point
+        working-directory: apps/muleagent
+        run: |
+          set -o pipefail
+          flutter build apk --debug 2>&1 | tee build-check.log
+      - name: Retain native compile diagnostics on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: mule-stage2-build-log
+          path: apps/muleagent/build-check.log
+          if-no-files-found: ignore
